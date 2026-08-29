@@ -12,8 +12,9 @@ Run the project locally with the commands below.
 1. Getting Started
 2. Project Overview
 3. Project Details
-4. Resources
-5. Credits
+4. OpenSpec
+5. Resources
+6. Credits
 
 ## Getting Started
 
@@ -56,6 +57,21 @@ presentation without copying its game systems or project structure.
 
 This is intentionally a small starting point for experimenting with Babylon.js
 Lite. Drag to orbit the camera and use the wheel or pinch gesture to zoom.
+
+## OpenSpec
+
+OpenSpec keeps the project’s feature intent and implementation requirements
+visible in the repository.
+
+- `openspec/config.yaml`: Project context and specification rules.
+- `openspec/specs/portrait-game-frame/spec.md`: Responsive viewport contract.
+- `openspec/changes/`: Proposed feature changes and their implementation tasks.
+
+Typical change workflow:
+
+1. Create a focused folder under `openspec/changes/`.
+2. Add a proposal, design, specs, and tasks for the change.
+3. Implement the change and verify its browser-visible scenarios.
 
 ## Resources
 

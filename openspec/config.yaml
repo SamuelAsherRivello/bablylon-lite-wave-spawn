@@ -1,0 +1,38 @@
+schema: spec-driven
+
+context: |
+  This is a minimal browser game built with JavaScript, Vite, and Babylon.js.
+
+  The application currently contains one Babylon.js scene rendered inside a
+  centered portrait game frame. The frame uses an exact 9:16 aspect ratio,
+  supports desktop and touch browsers, and resizes with the viewport.
+
+  Toolset guardrails:
+  - Use the dependencies already declared in package.json.
+  - Keep the runtime small and use Babylon.js core for scene work.
+  - Do not add a framework, UI library, renderer, or build tool without an
+    OpenSpec proposal explaining why the current toolset is insufficient and
+    explicit user approval.
+
+  Code guardrails:
+  - Use ES modules and named Babylon.js imports.
+  - Keep authored source focused and readable.
+  - Keep browser-visible behavior verifiable through the local Vite server.
+
+rules:
+  proposal:
+    - State effects on desktop and portrait mobile browsers.
+    - Justify any proposed dependency outside the approved toolset.
+  design:
+    - Describe touch behavior and viewport-resize behavior when affected.
+    - Identify ownership and disposal of new Babylon.js resources.
+  specs:
+    - Include browser-visible acceptance scenarios for affected behavior.
+  tasks:
+    - Include a production build and real-browser verification.
+
+operations:
+  apply:
+    guidance:
+      - Preserve the centered 9:16 game frame.
+      - Verify affected behavior on desktop and portrait mobile viewports.
