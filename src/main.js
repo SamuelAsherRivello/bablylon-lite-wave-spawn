@@ -41,6 +41,7 @@ background.position.z = 0;
 const markerMaterial = new StandardMaterial("origin-marker-material", scene);
 markerMaterial.diffuseColor = new Color3(1, 0.15, 0.1);
 markerMaterial.emissiveColor = new Color3(0.5, 0.02, 0.01);
+markerMaterial.backFaceCulling = false;
 const originMarker = MeshBuilder.CreatePlane(
   "origin-marker",
   { width: 0.3, height: 0.3 },
