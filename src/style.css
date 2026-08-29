@@ -32,4 +32,34 @@ body { min-height: 100vh; overflow: hidden; }
 
 #renderCanvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
+.game-ui { position: absolute; inset: 0; pointer-events: none; }
+.main-menu { pointer-events: auto; cursor: pointer; }
+.gameplay { pointer-events: none; }
+.selection-layer { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 18px; padding: 20px; pointer-events: none; }
+.phase-label { margin: 0; color: #fff; font-size: 16px; font-weight: 700; text-shadow: 0 2px 5px #000; }
+.hero-cards { display: grid; gap: 12px; width: min(78%, 300px); }
+.hero-card { position: relative; display: grid; place-items: center; height: 132px; border: 2px solid #fff; border-radius: 0; background: #f8f5ed; box-shadow: 0 5px 10px #0008; cursor: pointer; pointer-events: auto; }
+.hero-card:hover, .hero-card:focus-visible { border-color: #f00; outline: 3px solid #f00; }
+.hero-card img { width: 96px; height: 96px; object-fit: contain; }
+.card-label { position: absolute; left: 10px; top: 10px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #f33; color: #fff; font-size: 19px; font-weight: 700; }
+.unit { position: absolute; left: calc(50% + (var(--slot) * 22px)); top: calc(8% + ((var(--line) - 1) * 16.8%)); width: 42px; height: 42px; object-fit: contain; z-index: 2; }
+.walking { animation: walk-up 26s ease-in forwards; animation-delay: var(--jiggle-delay); }
+.enemy-unit.walking { animation-name: walk-down; }
+@keyframes walk-up { 0% { margin-left: 0; } 25% { margin-left: calc(var(--jiggle) * 1px); } 50% { margin-left: calc(var(--jiggle) * -1px); } 75% { margin-left: calc(var(--jiggle) * 1px); } 100% { margin-left: 0; top: 8%; } }
+@keyframes walk-down { 0% { margin-left: 0; } 25% { margin-left: calc(var(--jiggle) * -1px); } 50% { margin-left: calc(var(--jiggle) * 1px); } 75% { margin-left: calc(var(--jiggle) * -1px); } 100% { margin-left: 0; top: 92%; } }
+
+.game-ui { position: absolute; inset: 0; pointer-events: none; }
+.choice-phase { display: grid; place-items: center; align-content: center; gap: 18px; padding: 20px; }
+.phase-label { margin: 0; color: #fff; font-size: 16px; font-weight: 700; text-shadow: 0 2px 5px #000; }
+.hero-cards { display: grid; gap: 12px; width: min(78%, 300px); }
+.hero-card { position: relative; display: grid; place-items: center; height: 132px; border: 2px solid #fff; border-radius: 0; background: #f8f5ed; box-shadow: 0 5px 10px #0008; cursor: pointer; pointer-events: auto; }
+.hero-card:hover, .hero-card:focus-visible { border-color: #f00; outline: 3px solid #f00; }
+.hero-card img { width: 96px; height: 96px; object-fit: contain; image-rendering: auto; }
+.card-label { position: absolute; left: 10px; top: 10px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #f33; color: #fff; font-size: 19px; font-weight: 700; }
+.unit { position: absolute; left: calc(50% + (var(--slot) * 22px)); top: calc(8% + ((var(--line) - 1) * 16.8%)); width: 42px; height: 42px; object-fit: contain; transform: translate(-50%, -50%); z-index: 2; }
+.walking { animation: walk-up 2.6s ease-in forwards; animation-delay: 0s; }
+.enemy-unit.walking { animation-name: walk-down; }
+@keyframes walk-up { 0% { margin-left: 0; } 25% { margin-left: 2px; } 50% { margin-left: -2px; } 75% { margin-left: 2px; } 100% { margin-left: 0; top: 8%; } }
+@keyframes walk-down { 0% { margin-left: 0; } 25% { margin-left: -2px; } 50% { margin-left: 2px; } 75% { margin-left: -2px; } 100% { margin-left: 0; top: 92%; } }
+
 @media (max-height: 600px) { .game-frame { height: 90vh; width: auto; } }
