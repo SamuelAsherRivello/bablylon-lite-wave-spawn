@@ -36,6 +36,7 @@ export class BattleGame {
   }
 
   showChoices() {
+    if (this.gameState === "Started") return;
     this.removeSelectionLayer();
     const choices = HEROES.filter((hero) => !this.selected.includes(hero.id));
     const layer = document.createElement("div");
@@ -111,7 +112,7 @@ export class BattleGame {
   }
 
   placeEnemy(playerLine, onComplete) {
-    const enemyLine = playerLine - 5;
+    const enemyLine = 7 - playerLine;
     const choices = HEROES.filter((hero) => !this.enemySelected.includes(hero.id));
     const hero = choices[Math.floor(Math.random() * choices.length)];
     this.enemySelected.push(hero.id);
@@ -119,8 +120,11 @@ export class BattleGame {
   }
 
   startBattle() {
+    this.removeSelectionLayer();
+    this.root.className = "game-ui gameplay battle-phase";
     window.setTimeout(() => {
       this.gameState = "Started";
+      this.removeSelectionLayer();
       [...this.playerUnits, ...this.enemyUnits].forEach((unit) => {
         unit.classList.add("walking");
       });

@@ -43,6 +43,7 @@ body { min-height: 100vh; overflow: hidden; }
 .hero-card img { width: 96px; height: 96px; object-fit: contain; }
 .card-label { position: absolute; left: 10px; top: 10px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #f33; color: #fff; font-size: 19px; font-weight: 700; }
 .unit { position: absolute; left: calc(50% + (var(--slot) * 22px)); top: calc(8% + ((var(--line) - 1) * 16.8%)); width: 42px; height: 42px; object-fit: contain; z-index: 2; }
+.battle-phase .selection-layer { display: none; }
 .walking { animation: walk-up 26s ease-in forwards; animation-delay: var(--jiggle-delay); }
 .enemy-unit.walking { animation-name: walk-down; }
 @keyframes walk-up { 0% { margin-left: 0; } 25% { margin-left: calc(var(--jiggle) * 1px); } 50% { margin-left: calc(var(--jiggle) * -1px); } 75% { margin-left: calc(var(--jiggle) * 1px); } 100% { margin-left: 0; top: 8%; } }
