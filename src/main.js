@@ -12,7 +12,12 @@ import {
 import "./style.css";
 
 const canvas = document.querySelector("#renderCanvas");
-const engine = new Engine(canvas, true, { preserveDrawingBuffer: true });
+const engine = new Engine(
+  canvas,
+  true,
+  { preserveDrawingBuffer: true },
+  true,
+);
 const scene = new Scene(engine);
 scene.clearColor = new Color4(0.035, 0.047, 0.075, 1);
 
@@ -26,6 +31,8 @@ camera.orthoTop = 8;
 
 const backgroundMaterial = new StandardMaterial("background-material", scene);
 const backgroundTexture = new Texture("/field-background.png", scene);
+backgroundTexture.updateSamplingMode(Texture.TRILINEAR_SAMPLINGMODE);
+backgroundTexture.anisotropicFilteringLevel = 16;
 backgroundMaterial.diffuseTexture = backgroundTexture;
 backgroundMaterial.emissiveTexture = backgroundTexture;
 backgroundMaterial.emissiveColor = Color3.White();
