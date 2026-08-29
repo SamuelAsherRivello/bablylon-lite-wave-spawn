@@ -1,8 +1,9 @@
 const HEROES = [
-  { id: "bishop", label: "A", name: "Light Bishop", image: "/art/heroes/light-bishop-v1.png" },
-  { id: "pawn", label: "B", name: "Light Pawn", image: "/art/heroes/light-pawn-v2.png" },
-  { id: "rook", label: "C", name: "Light Rook", image: "/art/heroes/light-rook-v2.png" },
+  { id: "bishop", name: "Light Bishop", image: "/art/heroes/light-bishop-v1.png" },
+  { id: "pawn", name: "Light Pawn", image: "/art/heroes/light-pawn-v2.png" },
+  { id: "rook", name: "Light Rook", image: "/art/heroes/light-rook-v2.png" },
 ];
+import { MOVEMENT_DURATION_MS, createWalkOffsets } from "./battle-rules.js";
 
 const PLAYER_LINES = { 4: 1, 5: 3, 6: 5 };
 const ENEMY_LINES = { 1: 5, 2: 3, 3: 1 };
@@ -61,7 +62,8 @@ export class BattleGame {
     card.className = "hero-card";
     card.type = "button";
     card.setAttribute("aria-label", `Choose ${hero.name}`);
-    card.innerHTML = `<span class="card-label">${hero.label}</span><img src="${hero.image}" alt="${hero.name}" />`;
+
+    card.append(this.createHero(hero, hero.name, "card-hero"));
     card.addEventListener("click", () => this.chooseHero(hero));
     return card;
   }
@@ -97,18 +99,37 @@ export class BattleGame {
   }
 
   createUnit(side, hero, line, index, count) {
-    const unit = document.createElement("img");
+    const unit = document.createElement("span");
     unit.className = `unit ${side}-unit`;
-    unit.src = hero.image;
-    unit.alt = `${hero.name} on line ${line}`;
     unit.dataset.line = String(line);
     unit.style.setProperty("--line", String(line));
     unit.style.setProperty("--slot", String(index - (count - 1) / 2));
-    unit.style.setProperty("--jiggle", String(1 + Math.floor(Math.random() * 3)));
+    const walkOffsets = createWalkOffsets();
+    unit.style.setProperty("--jiggle", String(Math.max(...walkOffsets)));
     unit.style.setProperty("--jiggle-delay", `${Math.random() * 0.6}s`);
+    unit.style.setProperty("--movement-duration", `${MOVEMENT_DURATION_MS}ms`);
+    unit.append(this.createHero(hero, `${hero.name} on line ${line}`, "unit-hero"));
     if (side === "player") this.playerUnits.push(unit);
     else this.enemyUnits.push(unit);
     return unit;
+  }
+
+  createHero(hero, alt, className) {
+    const wrapper = document.createElement("span");
+    wrapper.className = `hero ${className}`;
+
+    const shadow = document.createElement("img");
+    shadow.className = "hero-shadow";
+    shadow.src = "/art/shadow-oval.png";
+    shadow.alt = "";
+    shadow.setAttribute("aria-hidden", "true");
+
+    const sprite = document.createElement("img");
+    sprite.className = "hero-sprite";
+    sprite.src = hero.image;
+    sprite.alt = alt;
+    wrapper.append(shadow, sprite);
+    return wrapper;
   }
 
   placeEnemy(playerLine, onComplete) {

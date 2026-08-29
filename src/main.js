@@ -5,6 +5,8 @@ import {
   Scene,
   Vector3,
 } from "@babylonjs/core";
+import HavokPhysics from "@babylonjs/havok";
+import { HavokPlugin } from "@babylonjs/core/Physics/v2/Plugins/havokPlugin";
 import { Arena } from "./arena.js";
 import { Gameplay } from "./gameplay.js";
 import "./style.css";
@@ -17,6 +19,8 @@ const engine = new Engine(
   true,
 );
 const scene = new Scene(engine);
+const havok = await HavokPhysics();
+scene.enablePhysics(null, new HavokPlugin(true, havok));
 scene.clearColor = new Color4(0.035, 0.047, 0.075, 1);
 
 const camera = new FreeCamera("locked-camera", new Vector3(0, 0, 10), scene);
@@ -29,7 +33,7 @@ camera.orthoTop = 8;
 
 new Arena(scene);
 
-new Gameplay(document.querySelector("#gameUi"));
+new Gameplay(scene, document.querySelector("#gameUi"));
 
 engine.runRenderLoop(() => scene.render());
 window.addEventListener("resize", () => engine.resize());
