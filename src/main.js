@@ -1,10 +1,9 @@
 import {
-  ArcRotateCamera,
   Color3,
   Color4,
-  DirectionalLight,
   Engine,
-  HemisphericLight,
+  FreeCamera,
+  Texture,
   MeshBuilder,
   Scene,
   StandardMaterial,
@@ -17,57 +16,38 @@ const engine = new Engine(canvas, true, { preserveDrawingBuffer: true });
 const scene = new Scene(engine);
 scene.clearColor = new Color4(0.035, 0.047, 0.075, 1);
 
-const camera = new ArcRotateCamera(
-  "camera",
-  -Math.PI / 2,
-  Math.PI / 3,
-  8,
-  new Vector3(0, 0.7, 0),
+const camera = new FreeCamera("locked-camera", new Vector3(0, 0, 10), scene);
+camera.setTarget(Vector3.Zero());
+camera.mode = FreeCamera.ORTHOGRAPHIC_CAMERA;
+camera.orthoLeft = -4.5;
+camera.orthoRight = 4.5;
+camera.orthoBottom = -8;
+camera.orthoTop = 8;
+
+const backgroundMaterial = new StandardMaterial("background-material", scene);
+const backgroundTexture = new Texture("/field-background.png", scene);
+backgroundMaterial.diffuseTexture = backgroundTexture;
+backgroundMaterial.emissiveTexture = backgroundTexture;
+backgroundMaterial.emissiveColor = Color3.White();
+backgroundMaterial.backFaceCulling = false;
+const background = MeshBuilder.CreatePlane(
+  "field-background",
+  { width: 9, height: 16 },
   scene,
 );
-camera.attachControl(canvas, true);
-camera.lowerRadiusLimit = 5;
-camera.upperRadiusLimit = 11;
-camera.wheelPrecision = 80;
+background.material = backgroundMaterial;
+background.position.z = 0;
 
-new HemisphericLight("ambient", new Vector3(0, 1, 0), scene).intensity = 0.8;
-const keyLight = new DirectionalLight("key", new Vector3(-1, -2, -1), scene);
-keyLight.position = new Vector3(3, 6, 4);
-keyLight.intensity = 1.6;
-
-const groundMaterial = new StandardMaterial("ground-material", scene);
-groundMaterial.diffuseColor = new Color3(0.08, 0.12, 0.19);
-groundMaterial.specularColor = new Color3(0.12, 0.18, 0.3);
-const ground = MeshBuilder.CreateGround("ground", { width: 6, height: 6 }, scene);
-ground.material = groundMaterial;
-
-const crystalMaterial = new StandardMaterial("crystal-material", scene);
-crystalMaterial.diffuseColor = new Color3(0.2, 0.75, 0.9);
-crystalMaterial.emissiveColor = new Color3(0.04, 0.25, 0.35);
-const crystal = MeshBuilder.CreateCylinder(
-  "crystal",
-  { diameterTop: 0, diameterBottom: 1.2, height: 2.2, tessellation: 6 },
+const markerMaterial = new StandardMaterial("origin-marker-material", scene);
+markerMaterial.diffuseColor = new Color3(1, 0.15, 0.1);
+markerMaterial.emissiveColor = new Color3(0.5, 0.02, 0.01);
+const originMarker = MeshBuilder.CreatePlane(
+  "origin-marker",
+  { width: 0.3, height: 0.3 },
   scene,
 );
-crystal.position.y = 1.1;
-crystal.material = crystalMaterial;
-
-const ringMaterial = new StandardMaterial("ring-material", scene);
-ringMaterial.diffuseColor = new Color3(0.96, 0.66, 0.24);
-ringMaterial.emissiveColor = new Color3(0.22, 0.1, 0.02);
-const ring = MeshBuilder.CreateTorus(
-  "ring",
-  { diameter: 2.5, thickness: 0.08, tessellation: 48 },
-  scene,
-);
-ring.rotation.x = Math.PI / 2;
-ring.position.y = 0.06;
-ring.material = ringMaterial;
-
-scene.registerBeforeRender(() => {
-  crystal.rotation.y += engine.getDeltaTime() * 0.0007;
-  ring.rotation.z -= engine.getDeltaTime() * 0.0004;
-});
+originMarker.material = markerMaterial;
+originMarker.position.z = 0.05;
 
 engine.runRenderLoop(() => scene.render());
 window.addEventListener("resize", () => engine.resize());

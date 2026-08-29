@@ -32,15 +32,4 @@ body { min-height: 100vh; overflow: hidden; }
 
 #renderCanvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
-.title-card {
-  position: absolute;
-  inset: 22px 22px auto;
-  pointer-events: none;
-  text-shadow: 0 2px 12px #000b;
-}
-
-.eyebrow { margin: 0 0 8px; color: #74d7ee; font-size: 11px; font-weight: 700; letter-spacing: .18em; }
-h1 { margin: 0; font-size: clamp(25px, 7vw, 34px); line-height: 1; letter-spacing: -.04em; }
-.status { margin: 10px 0 0; color: #b7c4dc; font-size: 13px; }
-
 @media (max-height: 600px) { .game-frame { height: 90vh; width: auto; } }
