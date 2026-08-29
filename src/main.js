@@ -9,6 +9,7 @@ import {
   StandardMaterial,
   Vector3,
 } from "@babylonjs/core";
+import { Hero } from "./hero.js";
 import "./style.css";
 
 const canvas = document.querySelector("#renderCanvas");
@@ -56,6 +57,29 @@ const originMarker = MeshBuilder.CreatePlane(
 );
 originMarker.material = markerMaterial;
 originMarker.position.z = 0.05;
+
+const heroes = [
+  new Hero(
+    "light-bishop",
+    "/art/heroes/light-bishop-v1.png",
+    new Vector3(-2.2, -4.4, 0),
+    scene,
+  ),
+  new Hero(
+    "light-pawn",
+    "/art/heroes/light-pawn-v2.png",
+    new Vector3(0, 0, 0),
+    scene,
+  ),
+  new Hero(
+    "light-rook",
+    "/art/heroes/light-rook-v2.png",
+    new Vector3(2.2, 4.4, 0),
+    scene,
+  ),
+];
+
+void heroes;
 
 engine.runRenderLoop(() => scene.render());
 window.addEventListener("resize", () => engine.resize());
