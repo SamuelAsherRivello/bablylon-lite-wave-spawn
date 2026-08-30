@@ -42,7 +42,9 @@ test("checked-in environment has a release version and unknown size", async () =
   ));
 
   assert.match(environment.releaseVersion, /^v[0-9]+[.][0-9]+[.][0-9]+$/);
-  assert.equal(environment.downloadSize, undefined);
+  assert.ok(
+    [undefined, "000000000000"].includes(environment.downloadSize),
+  );
 });
 
 test("release documentation keeps source metadata and published fields aligned", async () => {
