@@ -2,10 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import {
+  ENVIRONMENT_EFFECT_Z,
   GROUND_Z,
   HERO_Z,
   PROJECTILE_Z,
   SHADOW_Z,
+  Y_DEPTH_SCALE,
   heroDepthForPivotY,
   heroSortValueForPivotY,
 } from "../src/depth.js";
@@ -57,7 +59,16 @@ test("hero depth remains between the fixed shadow and projectile layer bands", (
   assert.ok(GROUND_Z > SHADOW_Z);
   assert.ok(depths.every((depth) => depth < SHADOW_Z));
   assert.ok(depths.every((depth) => depth > PROJECTILE_Z));
-  assert.ok(depths.every((depth) => Math.abs(depth - HERO_Z) < 0.1));
+  assert.ok(depths.every((depth) => Math.abs(depth - HERO_Z) < 10));
+});
+
+test("major scene layers use rounded one-hundred-unit depth bands", () => {
+  assert.equal(GROUND_Z, 400);
+  assert.equal(ENVIRONMENT_EFFECT_Z, 300);
+  assert.equal(SHADOW_Z, 200);
+  assert.equal(HERO_Z, 100);
+  assert.equal(PROJECTILE_Z, 0);
+  assert.equal(Y_DEPTH_SCALE, 1);
 });
 
 test("heroes use the current shadow center as the only depth-sorting pivot", async () => {

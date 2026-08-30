@@ -68,6 +68,8 @@ test("every current mutable time owner consumes pause-aware game time", async ()
   assert.match(hero, /damageCooldownRemaining - activeDelta/);
   assert.match(projectile, /pauseController\?\.getDelta\(rawDelta\)/);
   assert.match(particles, /pauseController\?\.getDelta\(rawDelta\)/);
-  assert.match(gameplay, /pauseController\.isPaused \|\| player\.removed/);
-  assert.match(gameplay, /pauseController\.setTerminal\(\)/);
+  assert.match(gameplay, /this\.pauseController\.isPaused \|\|[\s\S]*player\.removed/);
+  assert.match(gameplay, /pauseController\.clearScheduled\(\)/);
+  assert.match(gameplay, /updateWaveIntro\(activeDelta\)/);
+  assert.match(gameplay, /updatePowerupActivation\(activeDelta\)/);
 });

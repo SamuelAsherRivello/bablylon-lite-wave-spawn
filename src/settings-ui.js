@@ -1,4 +1,9 @@
-import { AUDIO_SETTING_KEYS, DEBUG_SETTING_KEYS, settingsStore } from "./settings-store.js";
+import {
+  AUDIO_SETTING_KEYS,
+  DEBUG_SETTING_KEYS,
+  GAMEPLAY_SETTING_KEYS,
+  settingsStore,
+} from "./settings-store.js";
 import { GameWindow } from "./game-window.js";
 
 const ASSET_BASE = import.meta.env?.BASE_URL ?? "/";
@@ -43,6 +48,21 @@ function createColliderControl(documentRef, store) {
   return { row, checkbox };
 }
 
+function createSkipStartControl(documentRef, store) {
+  const row = documentRef.createElement("label");
+  row.className = "skip-start-control";
+  const label = documentRef.createElement("span");
+  label.textContent = "Skip Start Menu";
+  const checkbox = documentRef.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = store.get(GAMEPLAY_SETTING_KEYS.skipStartMenu);
+  checkbox.addEventListener("change", () => {
+    store.set(GAMEPLAY_SETTING_KEYS.skipStartMenu, checkbox.checked);
+  });
+  row.append(label, checkbox);
+  return { row, checkbox };
+}
+
 export function createSettingsUi({
   host,
   pauseController,
@@ -73,9 +93,11 @@ export function createSettingsUi({
       documentRef, store, "SFX", AUDIO_SETTING_KEYS.sfx,
     );
     const colliderControl = createColliderControl(documentRef, store);
+    const skipStartControl = createSkipStartControl(documentRef, store);
     const musicSlider = musicControl.slider;
     const sfxSlider = sfxControl.slider;
     const colliderCheckbox = colliderControl.checkbox;
+    const skipStartCheckbox = skipStartControl.checkbox;
     const resetButton = documentRef.createElement("button");
     resetButton.className = "settings-reset";
     resetButton.type = "button";
@@ -85,11 +107,13 @@ export function createSettingsUi({
       musicSlider.value = String(store.get(AUDIO_SETTING_KEYS.music));
       sfxSlider.value = String(store.get(AUDIO_SETTING_KEYS.sfx));
       colliderCheckbox.checked = store.get(DEBUG_SETTING_KEYS.showColliders);
+      skipStartCheckbox.checked = store.get(GAMEPLAY_SETTING_KEYS.skipStartMenu);
     });
     content.append(
       musicControl.row,
       sfxControl.row,
       colliderControl.row,
+      skipStartControl.row,
       resetButton,
     );
     pauseController.pause();
@@ -99,6 +123,7 @@ export function createSettingsUi({
       title: "Settings Menu",
       content,
       documentRef,
+      closeLabel: "Close settings",
       onClose: () => {
         activeWindow = null;
         gear.setAttribute("aria-label", "Open settings");

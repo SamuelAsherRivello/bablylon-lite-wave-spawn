@@ -7,16 +7,23 @@ export const AUDIO_SETTING_KEYS = Object.freeze({
 export const DEBUG_SETTING_KEYS = Object.freeze({
   showColliders: "debug.showColliders",
 });
+export const GAMEPLAY_SETTING_KEYS = Object.freeze({
+  skipStartMenu: "gameplay.skipStartMenu",
+});
 
 function defaultFor(key) {
-  if (key === DEBUG_SETTING_KEYS.showColliders) return false;
+  if (key === DEBUG_SETTING_KEYS.showColliders ||
+      key === GAMEPLAY_SETTING_KEYS.skipStartMenu) return false;
   return key === AUDIO_SETTING_KEYS.music || key === AUDIO_SETTING_KEYS.sfx
     ? 100
     : undefined;
 }
 
 function validValue(key, value) {
-  if (key === DEBUG_SETTING_KEYS.showColliders) return typeof value === "boolean";
+  if (key === DEBUG_SETTING_KEYS.showColliders ||
+      key === GAMEPLAY_SETTING_KEYS.skipStartMenu) {
+    return typeof value === "boolean";
+  }
   if (key !== AUDIO_SETTING_KEYS.music && key !== AUDIO_SETTING_KEYS.sfx) return true;
   return Number.isFinite(value) && value >= 0 && value <= 100;
 }
@@ -70,6 +77,7 @@ export function createSettingsStore(storage = browserStorage()) {
         AUDIO_SETTING_KEYS.music,
         AUDIO_SETTING_KEYS.sfx,
         DEBUG_SETTING_KEYS.showColliders,
+        GAMEPLAY_SETTING_KEYS.skipStartMenu,
       ]);
       values = {};
       try {

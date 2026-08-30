@@ -25,6 +25,7 @@ import {
   SHADOW_Z,
 } from "./depth.js";
 import { constrainHeroToPlayableBounds } from "./arena-config.js";
+import { PhysicsPrestepType } from "@babylonjs/core/Physics/v2/IPhysicsEnginePlugin.js";
 
 const HERO_COLLIDER_HEIGHT = 0.5;
 const HERO_COLLIDER_CENTER_Y = -HERO_COLLIDER_HEIGHT / 2;
@@ -54,6 +55,7 @@ export class Hero {
     this.maxHealth = stats.health;
     this.speed = stats.speed;
     this.damage = stats.damage;
+    this.mass = stats.mass;
     this.damageCooldownRemaining = 0;
     this.scene = scene;
     this.pauseController = pauseController;
@@ -173,7 +175,7 @@ export class Hero {
       this.root,
       PhysicsShapeType.BOX,
       {
-        mass: 1,
+        mass: this.mass,
         friction: 0,
         restitution: 0,
         extents: new Vector3(0.58, HERO_COLLIDER_HEIGHT, 0.2),
@@ -183,7 +185,7 @@ export class Hero {
     );
     // Prevent the body from rotating on any axis.
     this.physics.body.setMassProperties({
-      mass: 1,
+      mass: this.mass,
       inertia: Vector3.Zero(),
     });
     this.physics.body.setAngularDamping(HERO_ANGULAR_DAMPING);
@@ -227,6 +229,17 @@ export class Hero {
     if (this.disposed || this.damageCooldownRemaining > 0) return false;
     this.damageCooldownRemaining = 0.2;
     return true;
+  }
+
+  teleportPhysicsToTransform() {
+    const body = this.physics?.body;
+    if (!body) return;
+    const plugin = this.scene.getPhysicsEngine()?.getPhysicsPlugin?.();
+    if (!plugin?.setPhysicsBodyTransformation) return;
+    const previousPrestepType = body.getPrestepType();
+    body.setPrestepType(PhysicsPrestepType.TELEPORT);
+    plugin.setPhysicsBodyTransformation(body, this.root);
+    body.setPrestepType(previousPrestepType);
   }
 
   disablePhysics() {

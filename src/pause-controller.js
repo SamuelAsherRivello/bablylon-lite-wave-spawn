@@ -80,4 +80,16 @@ export class PauseController {
     this.scheduled.clear();
     if (this.scene) this.scene.physicsEnabled = false;
   }
+
+  clearScheduled() {
+    this.scheduled.clear();
+  }
+
+  reset() {
+    this.isTerminal = false;
+    this.isPaused = false;
+    this.scheduled.clear();
+    this.velocitySnapshots.clear();
+    if (this.scene) this.scene.physicsEnabled = true;
+  }
 }

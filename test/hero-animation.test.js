@@ -197,7 +197,7 @@ test("gameplay derives repeating animation from velocity without changing veloci
 test("gameplay blinks survivors and delays dead disposal until animation completion", async () => {
   const source = await readFile(new URL("../src/gameplay.js", import.meta.url), "utf8");
 
-  assert.match(source, /if \(this\.pauseController\.isPaused \|\| player\.removed \|\| enemy\.removed\) return;/);
+  assert.match(source, /if \(this\.pauseController\.isPaused \|\|[\s\S]*player\.removed \|\| enemy\.removed\) return;/);
   assert.match(source, /HERO_ANIMATION_STATES\.TAKE_DAMAGE/);
   assert.match(source, /HERO_ANIMATION_STATES\.DEAD/);
   assert.match(source, /this\.dyingUnits\.add\(unit\)/);
@@ -209,10 +209,10 @@ test("gameplay blinks survivors and delays dead disposal until animation complet
 test("battle completion waits for pending death animations", async () => {
   const source = await readFile(new URL("../src/gameplay.js", import.meta.url), "utf8");
 
-  assert.match(source, /this\.pendingBattleResult\s*=\s*message/);
+  assert.match(source, /this\.pendingBattleResult\s*=\s*winner/);
   assert.match(source, /if \(this\.dyingUnits\.size > 0\) return;/);
-  assert.match(source, /finalizeBattle\(message\)/);
-  assert.match(source, /this\.pauseController\.setTerminal\(\)/);
+  assert.match(source, /finalizeBattle\(winner\)/);
+  assert.match(source, /this\.pauseController\.clearScheduled\(\)/);
   assert.doesNotMatch(source, /stopRenderLoop\(\)/);
 });
 

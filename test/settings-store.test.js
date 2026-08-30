@@ -3,9 +3,25 @@ import assert from "node:assert/strict";
 import {
   AUDIO_SETTING_KEYS,
   DEBUG_SETTING_KEYS,
+  GAMEPLAY_SETTING_KEYS,
   SETTINGS_STORAGE_KEY,
   createSettingsStore,
 } from "../src/settings-store.js";
+
+test("Skip Start Menu defaults off, validates booleans, persists, and resets", () => {
+  const storage = new MemoryStorage();
+  const store = createSettingsStore(storage);
+
+  assert.equal(store.get(GAMEPLAY_SETTING_KEYS.skipStartMenu), false);
+  assert.equal(store.set(GAMEPLAY_SETTING_KEYS.skipStartMenu, true), true);
+  assert.equal(
+    createSettingsStore(storage).get(GAMEPLAY_SETTING_KEYS.skipStartMenu), true,
+  );
+  assert.equal(store.set(GAMEPLAY_SETTING_KEYS.skipStartMenu, "yes"), false);
+  store.set(GAMEPLAY_SETTING_KEYS.skipStartMenu, true);
+  store.reset();
+  assert.equal(store.get(GAMEPLAY_SETTING_KEYS.skipStartMenu), false);
+});
 
 class MemoryStorage {
   constructor(initial = {}) { this.values = new Map(Object.entries(initial)); }

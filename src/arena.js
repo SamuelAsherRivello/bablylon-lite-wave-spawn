@@ -92,6 +92,22 @@ export class Arena {
     return this.wallPhysics.map((physics) => physics.body).filter(Boolean);
   }
 
+  setConfig(arenaConfig) {
+    if (!arenaConfig || arenaConfig === this.config) return;
+    const previousTexture = this.backgroundTexture;
+    this.config = arenaConfig;
+    this.root.name = `arena-${arenaConfig.id}`;
+    this.backgroundTexture = new Texture(
+      `${ASSET_BASE}${arenaConfig.backgroundPath}`,
+      this.scene,
+    );
+    this.backgroundTexture.updateSamplingMode(Texture.TRILINEAR_SAMPLINGMODE);
+    this.backgroundTexture.anisotropicFilteringLevel = 16;
+    this.backgroundMaterial.diffuseTexture = this.backgroundTexture;
+    this.backgroundMaterial.emissiveTexture = this.backgroundTexture;
+    previousTexture.dispose();
+  }
+
   dispose() {
     this.wallPhysics.forEach((physics) => physics.dispose());
     this.wallMeshes.forEach((mesh) => mesh.dispose());

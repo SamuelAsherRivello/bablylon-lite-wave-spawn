@@ -7,12 +7,19 @@ Defines a reusable modal game window that can host settings now and other game-i
 ## Requirements
 
 ### Requirement: Reusable modal window structure
-The game SHALL provide a reusable modal window with a caller-supplied title and body content, a close control in the window's upper-right, and a backdrop covering the complete game frame.
+The game SHALL provide a reusable modal window with a caller-supplied title and
+body content, a caller-selected policy for showing an upper-right X control, and
+a backdrop covering the complete game frame.
 
 #### Scenario: Settings use the reusable window
 - **WHEN** the Settings Menu is opened
-- **THEN** its title and audio controls are presented through the reusable modal window
-- **AND** the window structure does not depend on settings-specific content
+- **THEN** its title and controls are presented through the reusable modal window
+- **AND** its X control is visible
+
+#### Scenario: Gameplay prompt omits the X control
+- **WHEN** the main-menu, Wave Complete, or Game Over window is displayed
+- **THEN** no X control or reserved close-control spacing is visible
+- **AND** the window remains an accessible modal dialog associated with its title
 
 ### Requirement: Modal presentation
 An open game window SHALL be centered horizontally and vertically over the game frame and SHALL darken the entire underlying game frame with 50% black.
@@ -28,15 +35,27 @@ An open game window SHALL be centered horizontally and vertically over the game 
 - **AND** the window, controls, typography, spacing, borders, and effects retain their authored relative proportions and positions
 
 ### Requirement: Modal dismissal
-An open game window SHALL close when the player activates its X control, activates the settings gear again, or activates the backdrop outside the window. Interaction inside the window SHALL not dismiss it unless that interaction targets a dismissal control.
+The reusable window SHALL allow its caller to control whether its X and backdrop
+are dismissal surfaces. Settings SHALL close through its X, the settings gear,
+or the backdrop; mandatory gameplay prompts SHALL close only through their
+explicit action button.
 
 #### Scenario: Close through any dismissal surface
-- **WHEN** the player clicks or taps the X, the gear, or the backdrop outside the window
-- **THEN** the window closes
+- **WHEN** the player clicks or taps the Settings X, gear, or backdrop outside
+  the window
+- **THEN** the Settings window closes
 
 #### Scenario: Use a control inside the window
-- **WHEN** the player clicks, taps, or drags content inside the window
-- **THEN** the window remains open
+- **WHEN** the player clicks, taps, or drags content inside a Settings or
+  mandatory gameplay window
+- **THEN** the window remains open unless that interaction activates its
+  explicit dismissal or progression control
+
+#### Scenario: Mandatory prompt rejects incidental dismissal
+- **WHEN** the player activates the backdrop around a main-menu, Wave Complete,
+  or Game Over prompt
+- **THEN** that prompt remains open
+- **AND** underlying game input remains blocked
 
 ### Requirement: Modal input isolation
 While a game window is open, pointer interaction SHALL remain available to the modal, gear, and backdrop, while input to the canvas and all underlying game controls SHALL be blocked.

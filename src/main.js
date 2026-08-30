@@ -11,12 +11,17 @@ import { HavokPlugin } from "@babylonjs/core/Physics/v2/Plugins/havokPlugin";
 import { Arena } from "./arena.js";
 import { Gameplay } from "./gameplay.js";
 import { initializeWithDefaultLoadingScreen } from "./startup.js";
-import { selectArena } from "./arena-config.js";
+import { createArenaOrder } from "./arena-config.js";
 import { PauseController } from "./pause-controller.js";
 import { createSettingsUi } from "./settings-ui.js";
 import { EnvironmentalEffects } from "./environmental-effects.js";
 import { ColliderDebugController } from "./collider-debug-controller.js";
-import { DEBUG_SETTING_KEYS, settingsStore } from "./settings-store.js";
+import { createMusicPlayer } from "./audio.js";
+import {
+  AUDIO_SETTING_KEYS,
+  DEBUG_SETTING_KEYS,
+  settingsStore,
+} from "./settings-store.js";
 import { loadReleaseMetadata } from "./release-metadata.js";
 import { createReleaseMetadataUi } from "./release-metadata-ui.js";
 import "./style.css";
@@ -29,7 +34,20 @@ const engine = new Engine(
   true,
 );
 const scene = new Scene(engine);
-const selectedArena = selectArena(window.location.search);
+const musicPlayer = createMusicPlayer({
+  getMusicVolume: () => settingsStore.get(AUDIO_SETTING_KEYS.music),
+});
+const unsubscribeMusicVolume = settingsStore.subscribe(
+  AUDIO_SETTING_KEYS.music,
+  (volume) => musicPlayer.setVolume(volume),
+);
+window.addEventListener("pagehide", () => {
+  unsubscribeMusicVolume();
+  musicPlayer.dispose();
+}, { once: true });
+const createSessionArenaOrder = () => createArenaOrder(window.location.search);
+const initialArenaOrder = createSessionArenaOrder();
+const selectedArena = initialArenaOrder[0];
 canvas.dataset.arenaId = String(selectedArena.id);
 canvas.dataset.arenaFriction = String(selectedArena.friction);
 await initializeWithDefaultLoadingScreen(engine, async () => {
@@ -60,6 +78,15 @@ await initializeWithDefaultLoadingScreen(engine, async () => {
     selectedArena,
     pauseController,
     environmentalEffects,
+    {
+      initialArenaOrder,
+      createArenaOrder: createSessionArenaOrder,
+      onArenaChange: (arenaConfig) => {
+        arena.setConfig(arenaConfig);
+        canvas.dataset.arenaId = String(arenaConfig.id);
+        canvas.dataset.arenaFriction = String(arenaConfig.friction);
+      },
+    },
   );
   const colliderDebugController = new ColliderDebugController({
     scene,

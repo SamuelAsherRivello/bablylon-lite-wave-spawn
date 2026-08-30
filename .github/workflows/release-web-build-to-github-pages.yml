@@ -140,10 +140,10 @@ jobs:
           touch pages-store/.nojekyll
           mkdir -p pages-store/latest
           cat > pages-store/latest/index.html <<HTML
-          <!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../releases/${RELEASE_VERSION}/"><title>Light Never Pawns</title></head><body><a href="../releases/${RELEASE_VERSION}/">Open the latest release</a></body></html>
+          <!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../releases/${RELEASE_VERSION}/"><title>Wave Spawn!</title></head><body><a href="../releases/${RELEASE_VERSION}/">Open the latest release</a></body></html>
           HTML
           cat > pages-store/index.html <<'HTML'
-          <!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=./latest/"><title>Light Never Pawns</title></head><body><a href="./latest/">Open the latest release</a></body></html>
+          <!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=./latest/"><title>Wave Spawn!</title></head><body><a href="./latest/">Open the latest release</a></body></html>
           HTML
 
       - name: Configure GitHub Pages

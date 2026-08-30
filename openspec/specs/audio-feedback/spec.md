@@ -4,6 +4,31 @@ Provides lightweight, browser-compatible sound feedback with per-effect loudness
 
 ## Requirements
 
+### Requirement: Continuous background music
+
+The game SHALL use `invincible` as one looping background-music instance for
+the lifetime of the open game, SHALL attempt playback during startup, and SHALL
+retry playback on the first player interaction when browser autoplay policy
+blocks the startup attempt. The active instance SHALL immediately follow the
+persisted Music category volume without pausing for menus or battle states.
+
+#### Scenario: Game remains open
+
+- **WHEN** the game finishes startup and remains open across menus and battles
+- **THEN** the `invincible` background track repeats continuously
+- **AND** the game does not create a new music instance for each state
+
+#### Scenario: Browser requires a playback gesture
+
+- **WHEN** startup playback is blocked by browser autoplay policy
+- **THEN** the first pointer or keyboard interaction retries the same music instance
+
+#### Scenario: Player changes Music volume
+
+- **WHEN** the player changes the Music slider while background music is active
+- **THEN** the active background-music volume changes immediately
+- **AND** the loop continues without restarting
+
 ### Requirement: Configurable sound playback
 
 The audio system SHALL support an individual sound's configured volume and optional random pitch range, SHALL apply the current category volume multiplier when creating playback, and SHALL preserve normal playback for sounds without per-sound options. Changing a category multiplier SHALL affect newly created playback and SHALL not alter audio instances that are already playing.
@@ -50,3 +75,18 @@ The game SHALL play the projectile-launch sound whenever a ranged projectile is 
 #### Scenario: Mobile portrait battle
 - **WHEN** a player reaches battle through the existing touch-friendly portrait flow
 - **THEN** projectile launch audio does not alter the centered 9:16 layout or resize behavior
+
+### Requirement: Battle result feedback
+
+The game SHALL play the `levelstop` sound once when it presents either a
+wave-complete prompt or a game-over prompt.
+
+#### Scenario: Intermediate wave ends
+
+- **WHEN** the game presents the `Wave Complete` prompt
+- **THEN** one `levelstop` sound plays as the prompt is shown
+
+#### Scenario: Run ends
+
+- **WHEN** the game presents the `Game Over` prompt after a win or loss
+- **THEN** one `levelstop` sound plays as the prompt is shown

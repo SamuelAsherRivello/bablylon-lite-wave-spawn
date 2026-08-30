@@ -10,10 +10,24 @@ export const ENEMY_LINE_COUNTS = [
 ];
 export const VERTICAL_SPEED_FACTOR = 0.1;
 export const RETARGET_INTERVAL_SECONDS = 3;
+export const COLLISION_PUSH_DURATION_SECONDS = 0.1;
+const MIN_HERO_DAMAGE = 10;
+const MAX_HERO_DAMAGE = 30;
+const MIN_HERO_MASS = 1;
+const HERO_MASS_SPREAD = 0.1;
+
+export function heroMassForDamage(damage) {
+  const finiteDamage = Number.isFinite(damage) ? damage : MIN_HERO_DAMAGE;
+  const boundedDamage = Math.min(MAX_HERO_DAMAGE, Math.max(MIN_HERO_DAMAGE, finiteDamage));
+  const damageProgress = (boundedDamage - MIN_HERO_DAMAGE) /
+    (MAX_HERO_DAMAGE - MIN_HERO_DAMAGE);
+  return MIN_HERO_MASS + damageProgress * HERO_MASS_SPREAD;
+}
+
 export const HERO_CLASSES = Object.freeze({
-  rook: Object.freeze({ role: "tank", health: 120, speed: 10, damage: 20, attacks: Object.freeze(["melee"]) }),
-  pawn: Object.freeze({ role: "swarm", health: 40, speed: 15, damage: 10, attacks: Object.freeze(["melee"]) }),
-  bishop: Object.freeze({ role: "striker", health: 80, speed: 10, damage: 30, attacks: Object.freeze(["melee", "ranged"]), range: 4.5, rangedCooldown: 1.2 }),
+  rook: Object.freeze({ role: "tank", health: 120, speed: 10, damage: 20, mass: heroMassForDamage(20), attacks: Object.freeze(["melee"]) }),
+  pawn: Object.freeze({ role: "swarm", health: 40, speed: 15, damage: 10, mass: heroMassForDamage(10), attacks: Object.freeze(["melee"]) }),
+  bishop: Object.freeze({ role: "striker", health: 80, speed: 10, damage: 30, mass: heroMassForDamage(30), attacks: Object.freeze(["melee", "ranged"]), range: 4.5, rangedCooldown: 1.2 }),
 });
 export const HERO_ANGULAR_DAMPING = 8;
 export const HERO_HEALTH = HERO_CLASSES.rook.health;
@@ -93,6 +107,66 @@ export function createMovementVelocity(unit, opponent, speed) {
   return distance === 0 ? { x: 0, y: 0 } : {
     x: (x / distance) * speed,
     y: (y / distance) * speed,
+  };
+}
+
+function normalizedDirection(firstPosition, secondPosition, fallback) {
+  const x = secondPosition.x - firstPosition.x;
+  const y = secondPosition.y - firstPosition.y;
+  const distance = Math.hypot(x, y);
+  if (distance > 0) return { x: x / distance, y: y / distance };
+
+  const fallbackDistance = Math.hypot(fallback.x, fallback.y);
+  return fallbackDistance > 0
+    ? { x: fallback.x / fallbackDistance, y: fallback.y / fallbackDistance }
+    : { x: 0, y: 0 };
+}
+
+export function createCollisionPushVelocities(
+  first,
+  second,
+  fallback = { x: 0, y: 0 },
+) {
+  const axis = normalizedDirection(first.position, second.position, fallback);
+  const firstNormal = first.velocity.x * axis.x + first.velocity.y * axis.y;
+  const secondNormal = second.velocity.x * axis.x + second.velocity.y * axis.y;
+  const firstIncoming = Math.max(0, firstNormal);
+  const secondIncoming = Math.max(0, -secondNormal);
+
+  if (firstIncoming === 0 && secondIncoming === 0) {
+    return {
+      axis,
+      sharedNormalVelocity: 0,
+      firstVelocity: { ...first.velocity },
+      secondVelocity: { ...second.velocity },
+    };
+  }
+
+  const firstMass = Number.isFinite(first.mass) && first.mass > 0 ? first.mass : 1;
+  const secondMass = Number.isFinite(second.mass) && second.mass > 0 ? second.mass : 1;
+  const sharedNormalVelocity =
+    (firstMass * firstIncoming - secondMass * secondIncoming) /
+    (firstMass + secondMass);
+  const firstTangent = {
+    x: first.velocity.x - firstNormal * axis.x,
+    y: first.velocity.y - firstNormal * axis.y,
+  };
+  const secondTangent = {
+    x: second.velocity.x - secondNormal * axis.x,
+    y: second.velocity.y - secondNormal * axis.y,
+  };
+
+  return {
+    axis,
+    sharedNormalVelocity,
+    firstVelocity: {
+      x: firstTangent.x + sharedNormalVelocity * axis.x,
+      y: firstTangent.y + sharedNormalVelocity * axis.y,
+    },
+    secondVelocity: {
+      x: secondTangent.x + sharedNormalVelocity * axis.x,
+      y: secondTangent.y + sharedNormalVelocity * axis.y,
+    },
   };
 }
 

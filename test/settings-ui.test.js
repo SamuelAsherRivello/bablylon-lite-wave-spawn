@@ -30,7 +30,7 @@ test("settings UI composes a reusable modal with the required controls and dismi
   assert.match(gameWindow, /setAttribute\("aria-modal", "true"\)/);
   assert.match(gameWindow, /event\.target === this\.backdrop/);
   assert.match(main, /createSettingsUi\(/);
-  assert.match(gameplay, /pauseController\.setTerminal\(\)/);
+  assert.match(gameplay, /const result = battleResult\(this\.session\.waveNumber, winner\)/);
   assert.doesNotMatch(gameplay, /stopRenderLoop\(\)/);
 });
 
@@ -74,4 +74,27 @@ test("close icon cross is geometrically centered instead of font-baseline aligne
   assert.match(styles, /\.game-window-close::before,\s*\.game-window-close::after\s*\{[^}]*position:\s*absolute;[^}]*top:\s*50%;[^}]*left:\s*50%;[^}]*transform-origin:\s*center;/s);
   assert.match(styles, /\.game-window-close::before\s*\{[^}]*translate\(-50%,\s*-50%\) rotate\(45deg\)/s);
   assert.match(styles, /\.game-window-close::after\s*\{[^}]*translate\(-50%,\s*-50%\) rotate\(-45deg\)/s);
+});
+
+test("game windows support mandatory prompts without incidental dismissal", async () => {
+  const source = await readFile(
+    new URL("../src/game-window.js", import.meta.url), "utf8",
+  );
+
+  assert.match(source, /showCloseButton\s*=\s*true/);
+  assert.match(source, /closeOnBackdrop\s*=\s*true/);
+  assert.match(source, /if \(showCloseButton\)/);
+  assert.match(source, /if \(closeOnBackdrop && event\.target === this\.backdrop\)/);
+  assert.match(source, /game-window--no-close/);
+});
+
+test("settings expose and reset the persisted Skip Start Menu toggle", async () => {
+  const source = await readFile(
+    new URL("../src/settings-ui.js", import.meta.url), "utf8",
+  );
+
+  assert.match(source, /label\.textContent = "Skip Start Menu"/);
+  assert.match(source, /GAMEPLAY_SETTING_KEYS\.skipStartMenu/);
+  assert.match(source, /skipStartCheckbox\.checked = store\.get/);
+  assert.match(source, /content\.append\([\s\S]*skipStartControl\.row/);
 });

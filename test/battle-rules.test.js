@@ -135,10 +135,10 @@ test("depth layers keep ground behind shadows and Y-sorted actors", async () => 
   const depthSource = await readFile(new URL("../src/depth.js", import.meta.url), "utf8");
   const heroSource = await readFile(new URL("../src/hero.js", import.meta.url), "utf8");
   const projectileSource = await readFile(new URL("../src/projectile.js", import.meta.url), "utf8");
-  assert.match(depthSource, /GROUND_Z = 1/);
-  assert.match(depthSource, /SHADOW_Z = 0\.8/);
-  assert.match(depthSource, /HERO_Z = 0\.4/);
-  assert.match(depthSource, /PROJECTILE_Z = 0\.2/);
+  assert.match(depthSource, /GROUND_Z = 400/);
+  assert.match(depthSource, /SHADOW_Z = 200/);
+  assert.match(depthSource, /HERO_Z = 100/);
+  assert.match(depthSource, /PROJECTILE_Z = 0/);
   assert.match(heroSource, /heroDepthForPivotY\(pivotY\)/);
   assert.match(projectileSource, /depthForY\(PROJECTILE_Z, this\.root\.position\.y\)/);
   assert.match(projectileSource, /this\.shadow\.position\.z = SHADOW_Z - PROJECTILE_Z/);
@@ -213,7 +213,7 @@ test("hero cards show name, emoji stats, and XP on three lines", async () => {
   const styles = await readFile(new URL("../src/style.css", import.meta.url), "utf8");
 
   assert.match(gameplaySource, /statLine\.textContent\s*=\s*`❤️:\$\{stats\.health\} ⚡:\$\{stats\.speed\} ⚔️:\$\{stats\.damage\}`/);
-  assert.match(gameplaySource, /xpLine\.textContent\s*=\s*"XP:000"/);
+  assert.match(gameplaySource, /xpLine\.textContent\s*=\s*formatXp\(this\.session\.xp\[hero\.id\]\)/);
   assert.match(styles, /\.hero-card\s*\{[^}]*flex:\s*0\s+0\s+25cqw;/s);
   assert.match(styles, /\.hero-card\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/s);
   assert.match(styles, /\.hero-card-stats, \.hero-card-xp\s*\{[^}]*font-family:\s*inherit;[^}]*font-size:\s*1\.45cqw;[^}]*font-weight:\s*inherit;/s);
@@ -291,8 +291,8 @@ test("damage paths apply directional knockback without dropping target memory", 
   assert.match(gameplaySource, /if \(unit\.knockbackRemainingSeconds > 0\)/);
   assert.match(gameplaySource, /this\.applyKnockback\(\s*player/);
   assert.match(gameplaySource, /this\.applyKnockback\(\s*enemy/);
-  assert.match(gameplaySource, /createKnockbackDirection\(enemyPosition, playerPosition/);
-  assert.match(gameplaySource, /createKnockbackDirection\(playerPosition, enemyPosition/);
+  assert.match(gameplaySource, /createKnockbackDirection\(\s*enemyPosition, playerPosition/);
+  assert.match(gameplaySource, /createKnockbackDirection\(\s*playerPosition, enemyPosition/);
   assert.match(projectileSource, /previousGroundPosition/);
   assert.match(projectileSource, /this\.onHit\(this\.target, this\.attacker, impactDirection\)/);
 });

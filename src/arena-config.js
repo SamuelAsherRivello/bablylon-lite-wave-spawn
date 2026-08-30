@@ -65,9 +65,9 @@ export const WALL_DEFINITIONS = Object.freeze([
 ]);
 
 export const ARENAS = Object.freeze([
-  Object.freeze({ id: 1, backgroundPath: "field-background.png", friction: 0.1 }),
-  Object.freeze({ id: 2, backgroundPath: "arena-dirt.png", friction: 0.25 }),
-  Object.freeze({ id: 3, backgroundPath: "arena-metal.png", friction: 0.4 }),
+  Object.freeze({ id: 1, backgroundPath: "field-background.webp", friction: 0.1 }),
+  Object.freeze({ id: 2, backgroundPath: "arena-dirt.webp", friction: 0.25 }),
+  Object.freeze({ id: 3, backgroundPath: "arena-metal.webp", friction: 0.4 }),
 ]);
 
 export function selectArena(search = globalThis.location?.search ?? "", random = Math.random) {
@@ -77,6 +77,20 @@ export function selectArena(search = globalThis.location?.search ?? "", random =
 
   const index = Math.min(ARENAS.length - 1, Math.floor(random() * ARENAS.length));
   return ARENAS[index];
+}
+
+export function createArenaOrder(
+  search = globalThis.location?.search ?? "",
+  random = Math.random,
+) {
+  const forcedId = Number.parseInt(new URLSearchParams(search).get("arena") ?? "", 10);
+  const forcedArena = ARENAS.find(({ id }) => id === forcedId);
+  const remaining = ARENAS.filter((arena) => arena !== forcedArena);
+  for (let index = remaining.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.min(index, Math.floor(random() * (index + 1)));
+    [remaining[index], remaining[swapIndex]] = [remaining[swapIndex], remaining[index]];
+  }
+  return forcedArena ? [forcedArena, ...remaining] : remaining;
 }
 
 export function applyArenaFriction(speed, friction) {

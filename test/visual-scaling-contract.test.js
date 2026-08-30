@@ -22,6 +22,11 @@ test("game-frame compositions avoid independent pixel and viewport sizing", asyn
     ".hero-card-stats, .hero-card-xp",
     ".hero-shadow",
     ".winner-label",
+    ".powerup-selection .phase-label",
+    ".powerup-card-art",
+    ".powerup-badge",
+    ".powerup-effects-layer",
+    ".powerup-shield-icon",
   ];
 
   for (const selector of scalableSelectors) {

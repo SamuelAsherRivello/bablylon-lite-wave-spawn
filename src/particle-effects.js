@@ -11,15 +11,15 @@ const ASSET_BASE = import.meta.env?.BASE_URL ?? "/";
 export const DAMAGE_CLOUD_CONFIG = {
   texturePath: `${ASSET_BASE}art/cloud-puff.png`,
   count: 5,
-  minimumSize: 0.055,
-  maximumSize: 0.09,
+  minimumSize: 1.65,
+  maximumSize: 2.7,
   minimumLifetimeSeconds: 0.32,
   maximumLifetimeSeconds: 0.52,
   minimumDelaySeconds: 0,
   maximumDelaySeconds: 0.08,
-  horizontalRange: 0.34,
-  verticalRange: 0.42,
-  z: 0.04,
+  horizontalRange: 0.255,
+  verticalRange: 0.315,
+  z: -1,
 };
 
 export function fadeOpacity(progress) {

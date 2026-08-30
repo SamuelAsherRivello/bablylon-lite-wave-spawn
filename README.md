@@ -1,15 +1,15 @@
-# Light Never Pawns
+# Wave Spawn!
 
 This demo is a minimal Babylon.js Lite-style project: one responsive 3D scene,
 one glowing crystal, and a centered portrait game frame.
 
 ## Live Demo
 
-https://samuelasherrivello.github.io/babylon-light-never-pawns-game/latest/
+https://samuelasherrivello.github.io/bablylon-lite-wave-spawn/latest/
 
 The demo is published by GitHub Actions when a GitHub Release is published.
 
-![Light Never Pawns portrait game screenshot](output/playwright/light-never-pawns-portrait.png)
+![Wave Spawn! portrait game screenshot](output/playwright/light-never-pawns-portrait.png)
 
 ## Table of Contents
 

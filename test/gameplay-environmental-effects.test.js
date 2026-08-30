@@ -13,6 +13,7 @@ test("hero death entry creates one crack with killing-blow damage at a cloned fi
   gameplay.enemyUnits = [];
   gameplay.dyingUnits = new Set();
   gameplay.pendingBattleResult = null;
+  gameplay.endBattle = () => {};
   gameplay.environmentalEffects = {
     create: (type, position, options) => created.push({ type, position, options }),
   };
