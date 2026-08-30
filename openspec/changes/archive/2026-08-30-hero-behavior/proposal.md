@@ -6,10 +6,11 @@ The battle currently treats hero movement as opposing directional travel, so her
 
 - Add hero target selection shared by all hero types.
 - Have each hero retain its selected enemy while that target remains active.
+- Allow each hero to reconsider its target periodically, using a cooldown to prevent frame-by-frame target thrashing.
 - Prefer an untargeted enemy, choosing by combat relevance: closest distance first, with lower current health preferred when candidates are otherwise comparable.
 - Allow a hero to select an already-targeted enemy when no untargeted enemy remains.
 - Replace fixed upward/downward movement with normalized movement toward the remembered target, while retaining the existing movement scale and collision system.
-- Reacquire a target when the remembered enemy is removed or otherwise unavailable; stop when no opposing enemy remains.
+- Reacquire a target when the remembered enemy is removed or otherwise unavailable, or when the periodic retarget interval elapses; stop when no opposing enemy remains.
 - Preserve the centered 9:16 game frame and support the same desktop and portrait mobile browser viewports.
 
 ## Capabilities

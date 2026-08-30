@@ -1,6 +1,7 @@
 import { Color3, MeshBuilder, StandardMaterial, TransformNode, Vector3 } from "@babylonjs/core";
 import { HERO_ANIMATION_STATES } from "./hero-animation.js";
 import { RANGED_PROJECTILE_SPEED } from "./battle-rules.js";
+import { depthForY, PROJECTILE_Z, SHADOW_Z } from "./depth.js";
 
 export class BishopProjectile {
   constructor(scene, attacker, target, onHit) {
@@ -13,7 +14,7 @@ export class BishopProjectile {
     this.start = attacker.hero.root.position.clone();
     this.root = new TransformNode(`${attacker.hero.name}-projectile`, scene);
     this.root.position = this.start.clone();
-    this.root.position.z = attacker.hero.physicsPlaneZ + 0.45;
+    this.root.position.z = depthForY(PROJECTILE_Z, this.root.position.y);
     this.collider = MeshBuilder.CreateDisc(`${this.root.name}-collider`, { radius: 0.16, tessellation: 20 }, scene);
     this.collider.parent = this.root;
     this.collider.isVisible = false;
@@ -22,7 +23,7 @@ export class BishopProjectile {
     this.mesh.parent = this.root;
     this.shadow = MeshBuilder.CreateDisc(`${this.root.name}-shadow`, { radius: 0.18, tessellation: 20 }, scene);
     this.shadow.parent = this.root;
-    this.shadow.position.z = -0.02;
+    this.shadow.position.z = SHADOW_Z - PROJECTILE_Z;
     this.shadow.scaling = new Vector3(1.35, 0.55, 1);
     this.shadowMaterial = new StandardMaterial(`${this.root.name}-shadow-material`, scene);
     this.shadowMaterial.diffuseColor = new Color3(0, 0, 0);
@@ -51,6 +52,7 @@ export class BishopProjectile {
     const groundPosition = Vector3.Lerp(this.start, targetPosition, progress);
     this.root.position.x = groundPosition.x;
     this.root.position.y = groundPosition.y;
+    this.root.position.z = depthForY(PROJECTILE_Z, this.root.position.y);
     // The root and collider stay on the ground path. Faux height is represented
     // by lifting body art in screen Y while its shadow remains attached to root.
     const fauxHeight = Math.sin(progress * Math.PI) * 0.9;

@@ -5,6 +5,7 @@ import {
   Texture,
   TransformNode,
 } from "@babylonjs/core";
+import { GROUND_Z } from "./depth.js";
 
 export class Arena {
   constructor(scene, backgroundPath = "/field-background.png") {
@@ -28,7 +29,8 @@ export class Arena {
     );
     this.background.parent = this.root;
     this.background.material = this.backgroundMaterial;
-    this.background.position.z = 0;
+    // The camera views from negative Z, so larger Z values are farther away.
+    this.background.position.z = GROUND_Z;
   }
 
   dispose() {

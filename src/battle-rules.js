@@ -9,6 +9,7 @@ export const ENEMY_LINE_COUNTS = [
   { line: 3, count: 1 },
 ];
 export const VERTICAL_SPEED_FACTOR = 0.1;
+export const RETARGET_INTERVAL_SECONDS = 3;
 export const HERO_CLASSES = Object.freeze({
   rook: Object.freeze({ role: "tank", health: 120, speed: 10, damage: 20, attacks: Object.freeze(["melee"]) }),
   pawn: Object.freeze({ role: "swarm", health: 40, speed: 15, damage: 10, attacks: Object.freeze(["melee"]) }),

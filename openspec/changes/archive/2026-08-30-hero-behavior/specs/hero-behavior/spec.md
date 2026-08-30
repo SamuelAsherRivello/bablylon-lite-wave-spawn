@@ -6,7 +6,7 @@ Give every battle hero an understandable combat intention by selecting, remember
 
 ### Requirement: Remembered enemy target
 
-Every active hero SHALL have at most one opposing enemy target. Once selected, the hero SHALL continue using that target for movement until the target is removed or otherwise unavailable.
+Every active hero SHALL have at most one opposing enemy target. Once selected, the hero SHALL continue using that target for movement until the target is removed or otherwise unavailable, or until the periodic retarget interval elapses. The retarget interval SHALL be 3 seconds of battle time.
 
 #### Scenario: Hero keeps its target
 - **WHEN** a hero has selected an active opposing enemy
@@ -17,6 +17,11 @@ Every active hero SHALL have at most one opposing enemy target. Once selected, t
 - **WHEN** a hero's remembered enemy is removed or unavailable
 - **THEN** the hero releases that target
 - **AND** selects a replacement if an opposing enemy remains
+
+#### Scenario: Periodic retargeting
+- **WHEN** a hero's current target has remained active for 3 seconds since its last target selection
+- **THEN** the hero is allowed to select a new target using the shared selection priority
+- **AND** the hero does not change target more often than once per 3-second interval
 
 ### Requirement: Shared target selection priority
 

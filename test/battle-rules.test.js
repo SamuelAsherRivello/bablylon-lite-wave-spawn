@@ -7,6 +7,7 @@ import {
   HERO_RENDER_DELAY_MS,
   PLAYER_LINE_COUNTS,
   VERTICAL_SPEED_FACTOR,
+  RETARGET_INTERVAL_SECONDS,
   createFormationPlan,
   createWalkOffsets,
   HERO_HEALTH,
@@ -53,9 +54,9 @@ test("hero movement keeps the sprite and shadow on one root", async () => {
   assert.match(heroSource, /this\.shadow\.parent\s*=\s*this\.root/);
   assert.match(heroSource, /this\.sprite\.parent\s*=\s*this\.root/);
   assert.match(heroSource, /new PhysicsAggregate\(/);
-  assert.match(heroSource, /inertia:\s*new Vector3\(0, 0, 1\)/);
+  assert.match(heroSource, /inertia:\s*Vector3\.Zero\(\)/);
   assert.match(heroSource, /setLinearVelocity\(\s*new Vector3\(linearVelocity\.x, linearVelocity\.y, 0\)/s);
-  assert.match(heroSource, /setAngularVelocity\(\s*new Vector3\(0, 0, angularVelocity\.z\)/s);
+  assert.match(heroSource, /setAngularVelocity\(Vector3\.Zero\(\)\)/);
   assert.match(heroSource, /setAngularDamping\(HERO_ANGULAR_DAMPING\)/);
   assert.match(gameplaySource, /createMovementVelocity\(unit, target, unit\.speed\)/);
   assert.match(gameplaySource, /setLinearVelocity\(new Vector3\(velocity\.x, velocity\.y, 0\)\)/);
@@ -74,12 +75,12 @@ test("battle heroes receive a side-colored glow behind their sprite", async () =
   assert.match(gameplaySource, /hero\.id, side\)/);
 });
 
-test("heroes keep a fixed depth while preserving the shared depth-sort hook", async () => {
+test("heroes preserve planar physics while using the shared depth-sort hook", async () => {
   const heroSource = await readFile(new URL("../src/hero.js", import.meta.url), "utf8");
   const gameplaySource = await readFile(new URL("../src/gameplay.js", import.meta.url), "utf8");
 
-  assert.match(heroSource, /this\.physicsPlaneZ\s*=\s*position\.z/);
-  assert.match(heroSource, /this\.root\.position\.z\s*=\s*this\.physicsPlaneZ/);
+  assert.match(heroSource, /this\.physicsPlaneZ\s*=\s*depthForY\(HERO_Z, position\.y\)/);
+  assert.match(heroSource, /this\.root\.position\.z\s*=\s*depthForY\(HERO_Z, this\.root\.position\.y\)/);
   assert.match(gameplaySource, /scene\.onBeforeRenderObservable\.add\(\(\)\s*=>/);
   assert.match(gameplaySource, /unit\.hero\.updateDepthSort\(\)/);
 });
@@ -116,7 +117,7 @@ test("hero lines use the requested mirrored vertical positions", () => {
 test("formation rendering uses the shared hero line Y mapping", async () => {
   const gameplaySource = await readFile(new URL("../src/gameplay.js", import.meta.url), "utf8");
 
-  assert.match(gameplaySource, /new Vector3\(slot \* 0\.58, lineToY\(line\), 0\.2\)/);
+  assert.match(gameplaySource, /new Vector3\(slot \* 0\.58, lineToY\(line\), 0\)/);
   assert.doesNotMatch(gameplaySource, /new Vector3\(slot \* 0\.58, this\.lineToY\(line\), 0\.2\)/);
 });
 
@@ -126,12 +127,26 @@ test("depth sorting does not translate heroes on Z", async () => {
   assert.doesNotMatch(heroSource, /0\.5\s*-\s*this\.root\.position\.y\s*\*\s*0\.01/);
 });
 
+test("depth layers keep ground behind shadows and Y-sorted actors", async () => {
+  const depthSource = await readFile(new URL("../src/depth.js", import.meta.url), "utf8");
+  const heroSource = await readFile(new URL("../src/hero.js", import.meta.url), "utf8");
+  const projectileSource = await readFile(new URL("../src/projectile.js", import.meta.url), "utf8");
+  assert.match(depthSource, /GROUND_Z = 1/);
+  assert.match(depthSource, /SHADOW_Z = 0\.8/);
+  assert.match(depthSource, /HERO_Z = 0\.4/);
+  assert.match(depthSource, /PROJECTILE_Z = 0\.2/);
+  assert.match(heroSource, /depthForY\(HERO_Z, this\.root\.position\.y\)/);
+  assert.match(projectileSource, /depthForY\(PROJECTILE_Z, this\.root\.position\.y\)/);
+  assert.match(projectileSource, /this\.shadow\.position\.z = SHADOW_Z - PROJECTILE_Z/);
+});
+
 test("hero formations render left to right with a 0.05-second delay", () => {
   assert.equal(HERO_RENDER_DELAY_MS, 50);
 });
 
 test("movement is slow and each hero walks with zero-drift jiggle", () => {
   assert.equal(VERTICAL_SPEED_FACTOR, 0.1);
+  assert.equal(RETARGET_INTERVAL_SECONDS, 3);
   const offsets = createWalkOffsets(() => 0.5);
 
   assert.equal(offsets.reduce((sum, offset) => sum + offset, 0), 0);

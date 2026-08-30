@@ -18,7 +18,7 @@ export const DAMAGE_CLOUD_CONFIG = {
   maximumDelaySeconds: 0.08,
   horizontalRange: 0.34,
   verticalRange: 0.42,
-  z: 0.27,
+  z: 0.04,
 };
 
 export function fadeOpacity(progress) {

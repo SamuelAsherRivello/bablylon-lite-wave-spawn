@@ -17,7 +17,7 @@ body { min-height: 100vh; overflow: hidden; }
 .phase-label { position: absolute; top: calc(50% - 30.7cqw); margin: 0; color: #fff; font-size: 3.72cqw; font-weight: 700; text-shadow: 0 0.47cqw 1.16cqw #000; }
 .hero-cards { display: flex; align-items: center; justify-content: center; gap: 5cqw; width: min(85cqw, 100%); margin-inline: auto; }
 .hero-card { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr auto; width: 25cqw; flex: 0 0 25cqw; place-items: center; height: calc(42cqw - 30px); padding: 3cqw; border: 0.6cqw solid #fff; border-radius: 0; background: #f8f5ed; box-shadow: 8px 8px 20px rgb(0 0 0 / 20%); cursor: pointer; pointer-events: auto; }
-.hero-card:hover, .hero-card:focus-visible { border-color: #f00; outline: 0.9cqw solid #f00; }
+.hero-card:hover, .hero-card:focus-visible { border-color: #2563eb; outline: 0.9cqw solid #2563eb; }
 .hero-card img { object-fit: contain; image-rendering: auto; }
 .hero { position: relative; display: block; width: 42px; height: 42px; }
 .card-hero { width: 70px; height: 70px; }

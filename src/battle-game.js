@@ -81,7 +81,7 @@ export class BattleGame {
             this.showChoices();
           }, 500);
         } else {
-          window.setTimeout(() => this.startBattle(), 500);
+          window.setTimeout(() => this.startBattle(), 200);
         }
       });
     });

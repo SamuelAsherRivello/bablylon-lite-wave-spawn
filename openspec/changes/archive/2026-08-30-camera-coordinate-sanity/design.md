@@ -1,12 +1,12 @@
 ## Context
 
-See proposal.md - Why. The current scene uses a FreeCamera at positive Z looking at the origin in orthographic mode, with symmetric X and Y bounds. Babylon's default up vector is +Y, and the existing `lineToY` mapping places larger positive values higher in the field.
+See proposal.md - Why. The current scene uses a FreeCamera looking at the origin in orthographic mode, with symmetric X and Y bounds. Browser verification showed that the positive-Z placement mirrors world X while preserving world Y-up.
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- Preserve the established right-handed 2D presentation and make it testable.
+- Preserve the established visual presentation while making scene coordinates conventional.
 - Verify the camera projection rather than relying only on visual convention.
 - Keep resize, pointer, touch, physics, and depth behavior unchanged.
 
@@ -17,7 +17,7 @@ See proposal.md - Why. The current scene uses a FreeCamera at positive Z looking
 
 ## Decisions
 
-- Keep the camera at `(0, 0, positive Z)` targeting the origin with the default +Y up vector. This already projects +X to the right and +Y upward; changing to a rotated or mirrored camera would contradict the requested convention.
+- Place the camera at `(0, 0, negative Z)` targeting the origin with the default +Y up vector. In Babylon's current projection this makes +X project screen-right while retaining +Y screen-up. This changes the viewing side, not gameplay coordinates or the global scene handedness.
 - Add a focused source-level or unit-level assertion for the camera contract, plus real-browser confirmation using distinct positive-axis markers or existing line positions. This provides both configuration protection and user-visible evidence.
 - Preserve the existing orthographic bounds and resize flow. Recomputing or swapping bounds is unnecessary because resizing the canvas does not change the sign of either projected axis.
 

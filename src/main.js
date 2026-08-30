@@ -25,7 +25,7 @@ scene.enablePhysics(null, new HavokPlugin(true, havok));
 scene.getPhysicsEngine().setGravity(new Vector3(0, 0, 0));
 scene.clearColor = new Color4(0.035, 0.047, 0.075, 1);
 
-const camera = new FreeCamera("locked-camera", new Vector3(0, 0, 10), scene);
+const camera = new FreeCamera("locked-camera", new Vector3(0, 0, -10), scene);
 camera.setTarget(Vector3.Zero());
 camera.mode = FreeCamera.ORTHOGRAPHIC_CAMERA;
 camera.orthoLeft = -4.5;

@@ -8,6 +8,7 @@ import {
   selectTarget,
   createMovementVelocity,
   VERTICAL_SPEED_FACTOR,
+  RETARGET_INTERVAL_SECONDS,
   canUseRangedAttack,
 } from "./battle-rules.js";
 import { createSoundPlayer } from "./audio.js";
@@ -149,8 +150,8 @@ export class Gameplay {
   createUnit(side, hero, line, index, count) {
     const slot = index - (count - 1) / 2;
     const mesh = new Hero(`${side}-${hero.id}-${line}-${index}`, hero.image,
-      new Vector3(slot * 0.58, lineToY(line), 0.2), this.scene, hero.id, side);
-    const unit = { side, hero: mesh, speed: 0 };
+      new Vector3(slot * 0.58, lineToY(line), 0), this.scene, hero.id, side);
+    const unit = { side, hero: mesh, speed: 0, targetAgeSeconds: 0 };
     mesh.root.metadata = { unit };
     mesh.physics.body.getCollisionObservable().add((event) => {
       const otherUnit =
@@ -199,9 +200,12 @@ export class Gameplay {
   startFrameMovement() {
     const updateMovement = (deltaSeconds = 1 / 60) => [...this.playerUnits, ...this.enemyUnits].forEach((unit) => {
       if (unit.removed) return;
+      unit.targetAgeSeconds += deltaSeconds;
       const opponents = unit.side === "player" ? this.enemyUnits : this.playerUnits;
+      if (unit.targetAgeSeconds >= RETARGET_INTERVAL_SECONDS) unit.target = null;
       if (!unit.target || unit.target.removed || !opponents.includes(unit.target)) {
         unit.target = selectTarget(unit, opponents);
+        unit.targetAgeSeconds = 0;
       }
       const target = unit.target;
       if (!target) {
@@ -229,6 +233,7 @@ export class Gameplay {
       defender.hero.health = Math.max(0, defender.hero.health - attacker.hero.damage);
       if (defender.hero.health <= 0) this.removeUnit(defender);
     });
+    this.playSound("projectileLaunch");
     this.projectiles.add(projectile);
     const originalDispose = projectile.dispose.bind(projectile);
     projectile.dispose = () => {

@@ -9,6 +9,7 @@ The current battle already has per-unit runtime heroes, mutable health, removal 
 - Keep targeting state on the runtime battle unit/hero boundary so it survives movement frames and can be invalidated with removal.
 - Centralize eligibility, distance, health, and stable tie-breaking in pure testable battle-rule logic.
 - Reacquire only when the remembered target is unavailable, avoiding target thrashing.
+- Reconsider a valid target on a 3-second battle-time cooldown, allowing adaptation without frame-by-frame switching.
 - Preserve current physics, collision damage, animation/jiggle, depth, frame timing, and responsive frame behavior.
 
 **Non-Goals:**
@@ -22,6 +23,7 @@ The current battle already has per-unit runtime heroes, mutable health, removal 
 - Select targets from the opposing active collection in a deterministic pass. Filter removed/unavailable units, partition candidates into untargeted and already-targeted groups, then rank the selected pool by squared distance, current health, and original collection order. This avoids square roots and makes tests reproducible.
 - Reuse normalized 2D velocity toward the target and retain the current profile-speed/movement-scale calculation. A coincident target produces zero velocity; collision and removal systems remain the authority for defeat.
 - Re-evaluate ownership after removals and before movement when a target is unavailable. Do not switch a valid target because another candidate moves closer.
+- Track each unit's next retarget time using elapsed render delta time. When the cooldown expires, clear/reconsider the target during the stable unit pass, then reset the cooldown after selection. An unavailable target bypasses the cooldown.
 - Keep touch input and resize handling unchanged because targeting is automatic and has no new interactive control or Babylon.js resource ownership. Existing scene resources continue to be owned and disposed by their current hero/gameplay owners.
 
 ## Risks / Trade-offs

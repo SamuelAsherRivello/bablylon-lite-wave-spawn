@@ -8,6 +8,7 @@
 - [x] 2.1 Add per-unit target state with initialization, validation, and cleanup aligned with the existing hero removal lifecycle; verify active heroes can hold at most one target.
 - [x] 2.2 Update battle movement to select targets in stable unit order, prefer untargeted enemies, fall back to targeted enemies when necessary, and use normalized target-directed velocity with existing profile speed and movement scale; verify movement-source and behavior tests pass.
 - [x] 2.3 Preserve fixed depth, collision handling, animation/jiggle, formation timing, and zero velocity when no opposing enemy remains; verify focused battle tests pass.
+- [x] 2.4 Add a 3-second per-hero retarget cooldown and verify heroes can reconsider active targets periodically without switching every frame.
 
 ## 3. Integration verification
 
