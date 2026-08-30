@@ -5,7 +5,9 @@ one glowing crystal, and a centered portrait game frame.
 
 ## Live Demo
 
-Run the project locally with the commands below.
+https://samuelasherrivello.github.io/babylon-light-never-pawns-game/latest/
+
+The demo is published by GitHub Actions when a GitHub Release is published.
 
 ## Table of Contents
 
@@ -25,6 +27,13 @@ Run the project locally with the commands below.
 3. Run `npm install` to install the project dependencies.
 4. Run `npm run dev` to launch the local development server.
 5. Open the URL printed by Vite.
+
+### Release Workflow
+
+1. Ensure GitHub Pages is configured to use GitHub Actions in the repository settings.
+2. Create and publish a release with a tag such as `v0.1.0`.
+3. Wait for `ReleaseWebBuildToGithubPages` to finish.
+4. Verify the root, `latest`, and versioned release URLs on desktop and in a portrait mobile viewport.
 
 ### More Commands
 

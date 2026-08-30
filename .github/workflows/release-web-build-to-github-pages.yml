@@ -1,0 +1,135 @@
+name: ReleaseWebBuildToGithubPages
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build versioned web release
+    runs-on: ubuntu-latest
+    env:
+      WEB_ASSET_NAME: babylon-web-build.zip
+
+    steps:
+      - name: Checkout released source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Resolve release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_version="${{ github.event.release.tag_name }}"
+          version_pattern='^v[0-9]+([.][0-9]+){1,2}(-[0-9A-Za-z.-]+)?$'
+          if ! [[ "${release_version}" =~ ${version_pattern} ]]; then
+            echo "::error::Release tag must look like v0.1 or v1.2.3."
+            exit 1
+          fi
+          echo "RELEASE_VERSION=${release_version}" >> "${GITHUB_ENV}"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build browser app
+        run: npm run build
+
+      - name: Validate browser build
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/index.html
+
+      - name: Package release web build
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          zip -q -r "../${WEB_ASSET_NAME}" .
+
+      - name: Store web build on GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          asset_names="$(gh release view "${RELEASE_VERSION}" --json assets --jq '.assets[].name')"
+          if printf '%s\n' "${asset_names}" | grep -Fxq "${WEB_ASSET_NAME}"; then
+            echo "Release web build already exists; keeping it immutable."
+          else
+            gh release upload "${RELEASE_VERSION}" "${WEB_ASSET_NAME}"
+          fi
+
+      - name: Assemble all versioned Pages builds
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p pages-store/releases
+          version_pattern='^v[0-9]+([.][0-9]+){1,2}(-[0-9A-Za-z.-]+)?$'
+          while IFS= read -r release_version; do
+            if ! [[ "${release_version}" =~ ${version_pattern} ]]; then
+              continue
+            fi
+            release_tmp="${RUNNER_TEMP}/releases/${release_version}"
+            mkdir -p "${release_tmp}"
+            if gh release download "${release_version}" --pattern "${WEB_ASSET_NAME}" --dir "${release_tmp}"; then
+              release_dir="pages-store/releases/${release_version}"
+              mkdir -p "${release_dir}"
+              unzip -q "${release_tmp}/${WEB_ASSET_NAME}" -d "${release_dir}"
+            fi
+          done < <(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases" --jq '.[] | select(.draft == false) | .tag_name')
+          test -f "pages-store/releases/${RELEASE_VERSION}/index.html"
+
+      - name: Add latest and root redirects
+        shell: bash
+        run: |
+          set -euo pipefail
+          touch pages-store/.nojekyll
+          mkdir -p pages-store/latest
+          cat > pages-store/latest/index.html <<HTML
+          <!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../releases/${RELEASE_VERSION}/"><title>Light Never Pawns</title></head><body><a href="../releases/${RELEASE_VERSION}/">Open the latest release</a></body></html>
+          HTML
+          cat > pages-store/index.html <<'HTML'
+          <!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=./latest/"><title>Light Never Pawns</title></head><body><a href="./latest/">Open the latest release</a></body></html>
+          HTML
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages-store
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@v4
