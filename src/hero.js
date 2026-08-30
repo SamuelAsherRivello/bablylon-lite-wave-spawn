@@ -1,6 +1,7 @@
 import {
   Color3,
   MeshBuilder,
+  Material,
   Scene,
   StandardMaterial,
   ShaderMaterial,
@@ -17,7 +18,22 @@ import {
   HeroAnimationController,
 } from "./hero-animation.js";
 import { DamageCloudEffect } from "./particle-effects.js";
-import { depthForY, HERO_Z, SHADOW_Z } from "./depth.js";
+import {
+  heroDepthForPivotY,
+  heroSortValueForPivotY,
+  HERO_Z,
+  SHADOW_Z,
+} from "./depth.js";
+import { constrainHeroToPlayableBounds } from "./arena-config.js";
+
+const HERO_COLLIDER_HEIGHT = 0.5;
+const HERO_COLLIDER_CENTER_Y = -HERO_COLLIDER_HEIGHT / 2;
+const HERO_COLLIDER_OFFSETS = Object.freeze({
+  left: -0.29,
+  right: 0.29,
+  bottom: -0.5,
+  top: 0,
+});
 const ASSET_BASE = import.meta.env?.BASE_URL ?? "/";
 
 export class Hero {
@@ -28,6 +44,7 @@ export class Hero {
     scene,
     classId = "rook",
     side = null,
+    pauseController = null,
   ) {
     this.name = name;
     const stats = HERO_CLASSES[classId] ?? HERO_CLASSES.rook;
@@ -39,10 +56,10 @@ export class Hero {
     this.damage = stats.damage;
     this.damageCooldownRemaining = 0;
     this.scene = scene;
+    this.pauseController = pauseController;
     this.disposed = false;
     this.deathCompleteCallback = null;
     this.root = new TransformNode(`${name}-root`, scene);
-    this.physicsPlaneZ = depthForY(HERO_Z, position.y);
 
     this.shadowTexture = new Texture(`${ASSET_BASE}art/shadow-oval.png`, scene);
     this.shadowTexture.updateSamplingMode(Texture.TRILINEAR_SAMPLINGMODE);
@@ -62,6 +79,9 @@ export class Hero {
     this.shadow.parent = this.root;
     this.shadow.material = this.shadowMaterial;
     this.shadow.position = new Vector3(0, -0.43, SHADOW_Z - HERO_Z);
+    this.physicsPlaneZ = heroDepthForPivotY(
+      position.y + this.shadow.position.y,
+    );
 
     this.texture = new Texture(imagePath, scene);
     this.texture.updateSamplingMode(Texture.TRILINEAR_SAMPLINGMODE);
@@ -73,6 +93,7 @@ export class Hero {
     this.material.emissiveTexture = this.texture;
     this.material.backFaceCulling = false;
     this.material.useAlphaFromDiffuseTexture = true;
+    this.material.transparencyMode = Material.MATERIAL_ALPHATEST;
 
     this.sprite = MeshBuilder.CreatePlane(
       name,
@@ -82,7 +103,7 @@ export class Hero {
     this.sprite.parent = this.root;
     this.sprite.material = this.material;
     this.root.position = position;
-    this.root.position.z = depthForY(HERO_Z, position.y);
+    this.root.position.z = this.physicsPlaneZ;
     this.sprite.position.z = 0;
 
     this.animationController = new HeroAnimationController({
@@ -114,13 +135,15 @@ export class Hero {
       },
     });
     this.animationObserver = scene.onBeforeRenderObservable.add(() => {
+      const rawDelta = scene.getEngine().getDeltaTime() / 1000;
+      const activeDelta = this.pauseController?.getDelta(rawDelta) ?? rawDelta;
       this.damageCooldownRemaining = Math.max(
         0,
-        this.damageCooldownRemaining - scene.getEngine().getDeltaTime() / 1000,
+        this.damageCooldownRemaining - activeDelta,
       );
-      this.animationController.update(scene.getEngine().getDeltaTime() / 1000);
+      this.animationController.update(activeDelta);
     });
-    this.damageCloudEffect = new DamageCloudEffect(scene, this.root);
+    this.damageCloudEffect = new DamageCloudEffect(scene, this.root, undefined, undefined, pauseController);
 
     if (side) {
       this.glow = MeshBuilder.CreatePlane(`${name}-glow`, { width: 1, height: 1 }, scene);
@@ -149,7 +172,13 @@ export class Hero {
     this.physics = new PhysicsAggregate(
       this.root,
       PhysicsShapeType.BOX,
-      { mass: 1, friction: 0, restitution: 0, extents: new Vector3(0.58, 0.84, 0.2) },
+      {
+        mass: 1,
+        friction: 0,
+        restitution: 0,
+        extents: new Vector3(0.58, HERO_COLLIDER_HEIGHT, 0.2),
+        center: new Vector3(0, HERO_COLLIDER_CENTER_Y, 0),
+      },
       scene,
     );
     // Prevent the body from rotating on any axis.
@@ -165,11 +194,18 @@ export class Hero {
     this.physicsObserver = scene.onAfterPhysicsObservable.add(() => {
       if (this.physics?.body) {
         const linearVelocity = this.physics.body.getLinearVelocity();
+        const constrained = constrainHeroToPlayableBounds(
+          this.root.position,
+          linearVelocity,
+          HERO_COLLIDER_OFFSETS,
+        );
+        this.root.position.x = constrained.position.x;
+        this.root.position.y = constrained.position.y;
         this.physics.body.setLinearVelocity(
-          new Vector3(linearVelocity.x, linearVelocity.y, 0),
+          new Vector3(constrained.velocity.x, constrained.velocity.y, 0),
         );
         this.physics.body.setAngularVelocity(Vector3.Zero());
-        this.root.position.z = depthForY(HERO_Z, this.root.position.y);
+        this.updateDepthSort();
       }
     });
 
@@ -228,6 +264,13 @@ export class Hero {
   }
 
   updateDepthSort() {
-    if (!this.disposed) this.root.position.z = depthForY(HERO_Z, this.root.position.y);
+    if (this.disposed) return;
+    const pivotY = this.getDepthPivotY();
+    this.zSortValue = heroSortValueForPivotY(pivotY);
+    this.root.position.z = heroDepthForPivotY(pivotY);
+  }
+
+  getDepthPivotY() {
+    return this.root.position.y + this.shadow.position.y;
   }
 }

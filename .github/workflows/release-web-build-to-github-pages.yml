@@ -30,19 +30,22 @@ jobs:
       - name: Checkout released source
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ inputs.release_tag || github.event.release.tag_name }}
 
       - name: Resolve release version
         shell: bash
         run: |
           set -euo pipefail
           release_version="${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}"
-          version_pattern='^v[0-9]+([.][0-9]+){1,2}(-[0-9A-Za-z.-]+)?$'
+          version_pattern='^v[0-9]+[.][0-9]+[.][0-9]+$'
           if ! [[ "${release_version}" =~ ${version_pattern} ]]; then
-            echo "::error::Release tag must look like v0.1 or v1.2.3."
+            echo "::error::Release tag must look like v0.0.0."
             exit 1
           fi
           echo "RELEASE_VERSION=${release_version}" >> "${GITHUB_ENV}"
+          printf '{\n  "releaseVersion": "%s",\n  "downloadSize": "000000000000"\n}\n' \
+            "${release_version}" \
+            > public/environment.json
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -59,11 +62,34 @@ jobs:
       - name: Build browser app
         run: npm run build
 
+      - name: Record total browser download size
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact_size="$(find dist -type f -printf '%s\n' | \
+            awk '{ total += $1 } END { print total }')"
+          if ! [[ "${artifact_size}" =~ ^[0-9]{1,12}$ ]]; then
+            echo "::error::Artifact size is outside the metadata field width."
+            exit 1
+          fi
+          padded_size="$(printf '%012d' "${artifact_size}")"
+          sed -i -E \
+            "s/\"downloadSize\": \"[0-9]+\"/\"downloadSize\": \"${padded_size}\"/" \
+            dist/environment.json
+          final_size="$(find dist -type f -printf '%s\n' | \
+            awk '{ total += $1 } END { print total }')"
+          test "${final_size}" = "${artifact_size}"
+
       - name: Validate browser build
         shell: bash
         run: |
           set -euo pipefail
           test -f dist/index.html
+          test -f dist/environment.json
+          grep -Eq '"releaseVersion": "v[0-9]+[.][0-9]+[.][0-9]+"' \
+            dist/environment.json
+          grep -Eq '"downloadSize": "[0-9]{12}"' \
+            dist/environment.json
 
       - name: Package release web build
         shell: bash

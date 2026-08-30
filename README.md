@@ -32,10 +32,10 @@ The demo is published by GitHub Actions when a GitHub Release is published.
 
 ### Release Workflow
 
-1. Ensure GitHub Pages is configured to use GitHub Actions in the repository settings.
-2. Create and publish a release with a tag such as `v0.1.0`.
-3. Wait for `ReleaseWebBuildToGithubPages` to finish.
-4. Verify the root, `latest`, and versioned release URLs on desktop and in a portrait mobile viewport.
+1. Update `public/environment.json` so `releaseVersion` matches the planned release, then create a matching three-component GitHub Release tag such as `v0.1.5`.
+2. Publish the release and wait for `ReleaseWebBuildToGithubPages` to finish.
+3. Verify the root, `latest`, and versioned URLs on desktop and in a portrait mobile viewport.
+4. Confirm the live line includes `releaseVersion` and the workflow-populated `downloadSize`, which is the total uncompressed browser-build size.
 
 ### More Commands
 
@@ -58,6 +58,8 @@ presentation without copying its game systems or project structure.
 - `index.html`: The page shell and centered game frame.
 - `src/main.js`: Babylon.js engine, camera, lights, and scene.
 - `src/style.css`: Responsive portrait layout and visual styling.
+- `AGENTS.md`: Mandatory repository instructions for AI coding agents.
+- `docs/game-size-relative-layout.md`: Layout and scaling practices for game-frame features.
 
 ### Dependencies
 
@@ -83,6 +85,22 @@ Typical change workflow:
 1. Create a focused folder under `openspec/changes/`.
 2. Add a proposal, design, specs, and tasks for the change.
 3. Implement the change and verify its browser-visible scenarios.
+
+### Visual Scaling Contract
+
+Every future feature that adds or changes content inside the game frame must
+preserve the composition's relative sizing and relative positioning as the
+centered 9:16 frame resizes. Size and position visible artwork, controls, text,
+spacing, borders, and effects from the game frame instead of fixed screen pixels
+or the browser viewport. Verify each affected composition in a large desktop
+viewport and a narrow portrait viewport.
+
+If a feature intentionally needs reflow, a breakpoint, or another non-uniform
+composition, define that exception explicitly in its OpenSpec requirements and
+browser-visible acceptance scenarios before implementation.
+
+See [Game-size-relative layout](docs/game-size-relative-layout.md) for unit
+selection, positioning practices, examples, exceptions, and verification steps.
 
 ## Resources
 

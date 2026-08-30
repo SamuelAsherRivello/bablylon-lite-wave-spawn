@@ -1,17 +1,21 @@
 import { Color3, MeshBuilder, StandardMaterial, TransformNode, Vector3 } from "@babylonjs/core";
 import { HERO_ANIMATION_STATES } from "./hero-animation.js";
-import { RANGED_PROJECTILE_SPEED } from "./battle-rules.js";
+import { createKnockbackDirection, RANGED_PROJECTILE_SPEED } from "./battle-rules.js";
 import { depthForY, PROJECTILE_Z, SHADOW_Z } from "./depth.js";
 
 export class BishopProjectile {
-  constructor(scene, attacker, target, onHit) {
+  constructor(scene, attacker, target, onHit, pauseController = null, onDispose = () => {}) {
     this.scene = scene;
     this.attacker = attacker;
     this.target = target;
     this.onHit = onHit;
+    this.pauseController = pauseController;
+    this.onDispose = onDispose;
     this.elapsed = 0;
     this.hit = false;
+    this.disposed = false;
     this.start = attacker.hero.root.position.clone();
+    this.previousGroundPosition = this.start.clone();
     this.root = new TransformNode(`${attacker.hero.name}-projectile`, scene);
     this.root.position = this.start.clone();
     this.root.position.z = depthForY(PROJECTILE_Z, this.root.position.y);
@@ -33,7 +37,10 @@ export class BishopProjectile {
     this.material.diffuseColor = attacker.side === "enemy" ? new Color3(0.95, 0.05, 0.05) : new Color3(0.05, 0.3, 1);
     this.material.emissiveColor = this.material.diffuseColor;
     this.mesh.material = this.material;
-    this.observer = scene.onBeforeRenderObservable.add(() => this.update(scene.getEngine().getDeltaTime() / 1000));
+    this.observer = scene.onBeforeRenderObservable.add(() => {
+      const rawDelta = scene.getEngine().getDeltaTime() / 1000;
+      this.update(this.pauseController?.getDelta(rawDelta) ?? rawDelta);
+    });
   }
 
   update(deltaSeconds) {
@@ -53,6 +60,16 @@ export class BishopProjectile {
     this.root.position.x = groundPosition.x;
     this.root.position.y = groundPosition.y;
     this.root.position.z = depthForY(PROJECTILE_Z, this.root.position.y);
+    const impactDirection = createKnockbackDirection(
+      this.previousGroundPosition,
+      groundPosition,
+      createKnockbackDirection(
+        this.start,
+        targetPosition,
+        { x: 0, y: this.attacker.side === "enemy" ? -1 : 1 },
+      ),
+    );
+    this.previousGroundPosition.copyFrom(groundPosition);
     // The root and collider stay on the ground path. Faux height is represented
     // by lifting body art in screen Y while its shadow remains attached to root.
     const fauxHeight = Math.sin(progress * Math.PI) * 0.9;
@@ -65,7 +82,7 @@ export class BishopProjectile {
       this.material.diffuseColor = new Color3(1, 1, 1);
       this.material.emissiveColor = new Color3(1, 1, 1);
       if (this.target.hero.canTakeDamage()) {
-        this.onHit(this.target, this.attacker);
+        this.onHit(this.target, this.attacker, impactDirection);
         if (!this.target.removed) {
           this.target.hero.playAnimation(HERO_ANIMATION_STATES.TAKE_DAMAGE);
           this.target.hero.playDamageEffect();
@@ -75,7 +92,9 @@ export class BishopProjectile {
   }
 
   dispose() {
-    if (!this.mesh) return;
+    if (this.disposed) return;
+    this.disposed = true;
+    const finalPosition = this.root.position.clone();
     this.scene.onBeforeRenderObservable.remove(this.observer);
     this.mesh.dispose();
     this.collider.dispose();
@@ -84,5 +103,6 @@ export class BishopProjectile {
     this.material.dispose();
     this.root.dispose();
     this.mesh = null;
+    this.onDispose(finalPosition);
   }
 }

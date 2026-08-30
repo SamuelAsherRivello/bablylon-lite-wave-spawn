@@ -21,6 +21,8 @@ export const HERO_DAMAGE = HERO_CLASSES.rook.damage;
 export const COLLISION_ENABLED = true;
 export const MELEE_ENABLED = true;
 export const RANGED_PROJECTILE_SPEED = 7;
+export const KNOCKBACK_DISTANCE_WORLD = 0.25;
+export const KNOCKBACK_DURATION_SECONDS = 0.16;
 export const HERO_RENDER_DELAY_MS = 50;
 export const BASE_MOVEMENT_DURATION_MS = 2600;
 export const MOVEMENT_DURATION_MS =
@@ -91,6 +93,28 @@ export function createMovementVelocity(unit, opponent, speed) {
   return distance === 0 ? { x: 0, y: 0 } : {
     x: (x / distance) * speed,
     y: (y / distance) * speed,
+  };
+}
+
+export function createKnockbackDirection(sourcePosition, targetPosition, fallback = { x: 0, y: 0 }) {
+  const x = targetPosition.x - sourcePosition.x;
+  const y = targetPosition.y - sourcePosition.y;
+  const distance = Math.hypot(x, y);
+  if (distance > 0) return { x: x / distance, y: y / distance };
+
+  const fallbackDistance = Math.hypot(fallback.x, fallback.y);
+  return fallbackDistance > 0
+    ? { x: fallback.x / fallbackDistance, y: fallback.y / fallbackDistance }
+    : { x: 0, y: 0 };
+}
+
+export function createKnockbackVelocity(direction, progress = 0) {
+  const normalizedProgress = Math.min(1, Math.max(0, progress));
+  const speed = (KNOCKBACK_DISTANCE_WORLD / KNOCKBACK_DURATION_SECONDS) *
+    2 * (1 - normalizedProgress);
+  return {
+    x: direction.x * speed,
+    y: direction.y * speed,
   };
 }
 

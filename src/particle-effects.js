@@ -32,10 +32,11 @@ function randomBetween(random, minimum, maximum) {
 }
 
 export class DamageCloudEffect {
-  constructor(scene, parent, config = DAMAGE_CLOUD_CONFIG, random = Math.random) {
+  constructor(scene, parent, config = DAMAGE_CLOUD_CONFIG, random = Math.random, pauseController = null) {
     this.scene = scene;
     this.config = config;
     this.random = random;
+    this.pauseController = pauseController;
     this.particles = [];
     this.root = new TransformNode("damage-clouds", scene);
     this.root.parent = parent;
@@ -49,7 +50,8 @@ export class DamageCloudEffect {
     this.material.useAlphaFromDiffuseTexture = true;
     this.material.backFaceCulling = false;
     this.observer = scene.onBeforeRenderObservable.add(() => {
-      this.update(scene.getEngine().getDeltaTime() / 1000);
+      const rawDelta = scene.getEngine().getDeltaTime() / 1000;
+      this.update(this.pauseController?.getDelta(rawDelta) ?? rawDelta);
     });
   }
 

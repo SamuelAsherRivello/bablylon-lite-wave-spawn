@@ -11,13 +11,18 @@ export const SOUND_SETTINGS = Object.freeze({
   projectileLaunch: Object.freeze({ volume: 0.045, pitchRange: [0.96, 1.04] }),
 });
 
-export function createSoundPlayer(AudioConstructor = globalThis.Audio) {
+export function createSoundPlayer(
+  AudioConstructor = globalThis.Audio,
+  getSfxVolume = () => 100,
+) {
   return (name) => {
     const path = SOUND_PATHS[name];
     if (!path || typeof AudioConstructor !== "function") return;
     const sound = new AudioConstructor(path);
     const settings = SOUND_SETTINGS[name] ?? {};
-    if (settings.volume !== undefined) sound.volume = settings.volume;
+    const baseVolume = settings.volume ?? 1;
+    const categoryVolume = Math.min(100, Math.max(0, Number(getSfxVolume()) || 0));
+    sound.volume = Math.min(1, Math.max(0, baseVolume * categoryVolume / 100));
     if (settings.pitchRange) {
       const [minimum, maximum] = settings.pitchRange;
       sound.playbackRate = minimum + Math.random() * (maximum - minimum);

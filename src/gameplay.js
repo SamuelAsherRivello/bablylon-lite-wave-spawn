@@ -10,12 +10,19 @@ import {
   VERTICAL_SPEED_FACTOR,
   RETARGET_INTERVAL_SECONDS,
   canUseRangedAttack,
+  createKnockbackDirection,
+  createKnockbackVelocity,
+  KNOCKBACK_DURATION_SECONDS,
 } from "./battle-rules.js";
 import { createSoundPlayer } from "./audio.js";
 import { Hero } from "./hero.js";
 import { HERO_ANIMATION_STATES } from "./hero-animation.js";
 import { Vector3 } from "@babylonjs/core";
 import { BishopProjectile } from "./projectile.js";
+import { ARENAS, applyArenaFriction } from "./arena-config.js";
+import { AUDIO_SETTING_KEYS, settingsStore } from "./settings-store.js";
+import { PauseController } from "./pause-controller.js";
+import { GROUND_CRACK_EFFECT } from "./environmental-effects.js";
 const ASSET_BASE = import.meta.env?.BASE_URL ?? "/";
 
 const HEROES = [
@@ -30,10 +37,22 @@ const ENEMY_LINES = { 1: 5, 2: 3, 3: 1 };
 export const CONTACT_DAMAGE_COOLDOWN_SECONDS = 0.2;
 
 export class Gameplay {
-  constructor(scene, root) {
+  constructor(
+    scene,
+    root,
+    arenaConfig = ARENAS[0],
+    pauseController = null,
+    environmentalEffects = null,
+  ) {
     this.scene = scene;
     this.root = root;
-    this.playSound = createSoundPlayer();
+    this.arenaConfig = arenaConfig;
+    this.pauseController = pauseController ?? new PauseController({ scene });
+    this.environmentalEffects = environmentalEffects;
+    this.playSound = createSoundPlayer(
+      globalThis.Audio,
+      () => settingsStore.get(AUDIO_SETTING_KEYS.sfx),
+    );
     this.selected = [];
     this.enemySelected = [];
     this.playerUnits = [];
@@ -44,8 +63,11 @@ export class Gameplay {
     this.contactCooldowns = new Map();
     this.projectiles = new Set();
     this.scene.onBeforeRenderObservable.add(() => {
+      const rawDelta = this.scene.getEngine().getDeltaTime() / 1000;
+      this.pauseController.update(rawDelta);
+      const activeDelta = this.pauseController.getDelta(rawDelta);
       for (const [contactId, remaining] of this.contactCooldowns) {
-        const nextRemaining = remaining - this.scene.getEngine().getDeltaTime() / 1000;
+        const nextRemaining = remaining - activeDelta;
         if (nextRemaining <= 0) this.contactCooldowns.delete(contactId);
         else this.contactCooldowns.set(contactId, nextRemaining);
       }
@@ -99,13 +121,14 @@ export class Gameplay {
     name.textContent = className;
     const statLine = document.createElement("span");
     statLine.className = "hero-card-stats";
-    statLine.textContent = `H=❤️${stats.health},S=⚡${stats.speed},D=⚔️${stats.damage}`;
+    statLine.textContent = `❤️:${stats.health} ⚡:${stats.speed} ⚔️:${stats.damage}`;
     const xpLine = document.createElement("span");
     xpLine.className = "hero-card-xp";
     xpLine.textContent = "XP:000";
     title.append(name, statLine, xpLine);
     card.append(title);
     card.addEventListener("click", () => {
+      if (this.pauseController.isPaused) return;
       this.playSound("click");
       this.chooseHero(hero);
     });
@@ -138,12 +161,12 @@ export class Gameplay {
     const count = side === "player" ? PLAYER_LINES[line] : ENEMY_LINES[line];
     return new Promise((resolve) => {
       Array.from({ length: count }, (_, index) => index).forEach((index) => {
-        window.setTimeout(() => {
+        this.pauseController.schedule(index * HERO_RENDER_DELAY_MS / 1000, () => {
           const unit = this.createUnit(side, hero, line, index, count);
           if (side === "player") this.playerUnits.push(unit);
           else this.enemyUnits.push(unit);
           if (index === count - 1) resolve();
-        }, index * HERO_RENDER_DELAY_MS);
+        });
       });
     });
   }
@@ -151,8 +174,17 @@ export class Gameplay {
   createUnit(side, hero, line, index, count) {
     const slot = index - (count - 1) / 2;
     const mesh = new Hero(`${side}-${hero.id}-${line}-${index}`, hero.image,
-      new Vector3(slot * 0.58, lineToY(line), 0), this.scene, hero.id, side);
-    const unit = { side, hero: mesh, speed: 0, targetAgeSeconds: 0 };
+      new Vector3(slot * 0.58, lineToY(line), 0), this.scene, hero.id, side,
+      this.pauseController);
+    const unit = {
+      side,
+      hero: mesh,
+      speed: 0,
+      targetAgeSeconds: 0,
+      knockbackDirection: { x: 0, y: 0 },
+      knockbackElapsedSeconds: 0,
+      knockbackRemainingSeconds: 0,
+    };
     mesh.root.metadata = { unit };
     mesh.physics.body.getCollisionObservable().add((event) => {
       const otherUnit =
@@ -187,15 +219,15 @@ export class Gameplay {
     await Promise.all(this.formationPromises);
     this.root.className = "game-ui battle-phase";
     this.playSound("levelStart");
-    window.setTimeout(() => {
+    this.pauseController.schedule(1, () => {
       this.startFrameMovement();
       if (COLLISION_ENABLED) {
-        window.setTimeout(
+        this.pauseController.schedule(
+          MOVEMENT_DURATION_MS / 2000,
           () => this.playSound("collision"),
-          MOVEMENT_DURATION_MS / 2,
         );
       }
-    }, 1000);
+    });
   }
 
   startFrameMovement() {
@@ -208,19 +240,38 @@ export class Gameplay {
         unit.target = selectTarget(unit, opponents);
         unit.targetAgeSeconds = 0;
       }
+      if (unit.knockbackRemainingSeconds > 0) {
+        const progress = unit.knockbackElapsedSeconds / KNOCKBACK_DURATION_SECONDS;
+        const velocity = createKnockbackVelocity(unit.knockbackDirection, progress);
+        unit.hero.physics?.body?.setLinearVelocity(new Vector3(velocity.x, velocity.y, 0));
+        unit.knockbackElapsedSeconds += deltaSeconds;
+        unit.knockbackRemainingSeconds = Math.max(
+          0,
+          unit.knockbackRemainingSeconds - deltaSeconds,
+        );
+        if (unit.knockbackRemainingSeconds === 0) {
+          unit.hero.physics?.body?.setLinearVelocity(Vector3.Zero());
+        }
+        return;
+      }
       const target = unit.target;
       if (!target) {
         unit.hero.physics?.body?.setLinearVelocity(Vector3.Zero());
         return;
       }
-      unit.speed = unit.hero.speed * (VERTICAL_SPEED_FACTOR);
+      unit.speed = applyArenaFriction(
+        unit.hero.speed * VERTICAL_SPEED_FACTOR,
+        this.arenaConfig.friction,
+      );
       const velocity = createMovementVelocity(unit, target, unit.speed);
       unit.hero.physics.body.setLinearVelocity(new Vector3(velocity.x, velocity.y, 0));
       this.tryRangedAttack(unit, target, deltaSeconds);
     });
     updateMovement();
     this.scene.onBeforeRenderObservable.add(() => {
-      updateMovement(this.scene.getEngine().getDeltaTime() / 1000);
+      const rawDelta = this.scene.getEngine().getDeltaTime() / 1000;
+      const activeDelta = this.pauseController.getDelta(rawDelta);
+      if (activeDelta > 0) updateMovement(activeDelta);
     });
   }
 
@@ -229,18 +280,21 @@ export class Gameplay {
     unit.rangedCooldown = Math.max(0, (unit.rangedCooldown ?? 0) - deltaSeconds);
     if (unit.rangedCooldown > 0 || !canUseRangedAttack(unit, target)) return;
     unit.rangedCooldown = unit.hero.profile.rangedCooldown;
-    const projectile = new BishopProjectile(this.scene, unit, target, (defender, attacker) => {
+    const projectile = new BishopProjectile(this.scene, unit, target, (defender, attacker, impactDirection) => {
       if (defender.removed) return;
       defender.hero.health = Math.max(0, defender.hero.health - attacker.hero.damage);
-      if (defender.hero.health <= 0) this.removeUnit(defender);
+      if (defender.hero.health <= 0) this.removeUnit(defender, attacker.hero.damage);
+      else {
+        this.applyKnockback(defender, impactDirection);
+      }
+    }, this.pauseController, (position) => {
+      this.projectiles.delete(projectile);
+      this.environmentalEffects?.create(GROUND_CRACK_EFFECT, position, {
+        damage: unit.hero.damage,
+      });
     });
     this.playSound("projectileLaunch");
     this.projectiles.add(projectile);
-    const originalDispose = projectile.dispose.bind(projectile);
-    projectile.dispose = () => {
-      originalDispose();
-      this.projectiles.delete(projectile);
-    };
   }
 
   syncUnitAnimation(unit) {
@@ -253,21 +307,31 @@ export class Gameplay {
   }
 
   resolveUnitCollision(player, enemy) {
-    if (player.removed || enemy.removed) return;
+    if (this.pauseController.isPaused || player.removed || enemy.removed) return;
     const contactId = `${player.hero.name}:${enemy.hero.name}`;
     if (this.contactCooldowns.has(contactId)) return;
     if (!player.hero.canTakeDamage() || !enemy.hero.canTakeDamage()) return;
     this.contactCooldowns.set(contactId, CONTACT_DAMAGE_COOLDOWN_SECONDS);
     const result = resolveCollision(player.hero, enemy.hero);
+    const playerPosition = player.hero.root.position.clone();
+    const enemyPosition = enemy.hero.root.position.clone();
     player.hero.health = result.attackerHealth;
     enemy.hero.health = result.defenderHealth;
-    if (player.hero.health <= 0) this.removeUnit(player);
+    if (player.hero.health <= 0) this.removeUnit(player, enemy.hero.damage);
     else {
+      this.applyKnockback(
+        player,
+        createKnockbackDirection(enemyPosition, playerPosition, { x: 0, y: -1 }),
+      );
       player.hero.playAnimation(HERO_ANIMATION_STATES.TAKE_DAMAGE);
       player.hero.playDamageEffect();
     }
-    if (enemy.hero.health <= 0) this.removeUnit(enemy);
+    if (enemy.hero.health <= 0) this.removeUnit(enemy, player.hero.damage);
     else {
+      this.applyKnockback(
+        enemy,
+        createKnockbackDirection(playerPosition, enemyPosition, { x: 0, y: 1 }),
+      );
       enemy.hero.playAnimation(HERO_ANIMATION_STATES.TAKE_DAMAGE);
       enemy.hero.playDamageEffect();
     }
@@ -276,7 +340,14 @@ export class Gameplay {
     }
   }
 
-  removeUnit(unit) {
+  applyKnockback(unit, direction) {
+    if (unit.removed) return;
+    unit.knockbackDirection = direction;
+    unit.knockbackElapsedSeconds = 0;
+    unit.knockbackRemainingSeconds = KNOCKBACK_DURATION_SECONDS;
+  }
+
+  removeUnit(unit, damage) {
     if (unit.removed) return;
     unit.removed = true;
     [...this.playerUnits, ...this.enemyUnits].forEach((otherUnit) => {
@@ -286,6 +357,11 @@ export class Gameplay {
     const index = units.indexOf(unit);
     if (index !== -1) units.splice(index, 1);
     this.dyingUnits.add(unit);
+    this.environmentalEffects?.create(
+      GROUND_CRACK_EFFECT,
+      unit.hero.root.position.clone(),
+      { damage },
+    );
     unit.hero.disablePhysics();
     unit.hero.playAnimation(HERO_ANIMATION_STATES.DEAD, () => {
       this.dyingUnits.delete(unit);
@@ -303,11 +379,17 @@ export class Gameplay {
   }
 
   finalizeBattle(message) {
-    this.scene.getEngine().stopRenderLoop();
+    this.pauseController.setTerminal();
     this.root.className = "game-ui battle-over";
     const result = document.createElement("p");
     result.className = "winner-label";
     result.textContent = message;
     this.root.replaceChildren(result);
+  }
+
+  getPhysicsBodies() {
+    return [...this.playerUnits, ...this.enemyUnits]
+      .map((unit) => unit.hero.physics?.body)
+      .filter(Boolean);
   }
 }

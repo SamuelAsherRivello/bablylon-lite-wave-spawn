@@ -19,20 +19,32 @@ context: |
   - Keep authored source focused and readable.
   - Keep browser-visible behavior verifiable through the local Vite server.
 
+  Visual composition guardrails:
+  - Every future feature inside the game frame must preserve frame-relative sizing and positioning.
+  - Size and position artwork, controls, text, spacing, borders, and effects from the centered 9:16 game frame.
+  - Do not introduce independent fixed-pixel or browser-viewport sizing that changes relative composition.
+  - A feature may use reflow, breakpoints, or non-uniform scaling only when its specification explicitly defines another composition.
+
 rules:
   proposal:
     - State effects on desktop and portrait mobile browsers.
     - Justify any proposed dependency outside the approved toolset.
+    - For browser-visible features, state how the change preserves frame-relative sizing and positioning or identify an explicitly specified composition exception.
   design:
     - Describe touch behavior and viewport-resize behavior when affected.
     - Identify ownership and disposal of new Babylon.js resources.
+    - Use the centered 9:16 game frame as the scale and position reference for browser-visible composition.
   specs:
     - Include browser-visible acceptance scenarios for affected behavior.
+    - Require future game-frame features to preserve relative sizing and positioning unless the feature explicitly defines another composition.
   tasks:
     - Include a production build and real-browser verification.
+    - Verify affected composition in a large desktop and narrow portrait viewport.
 
 operations:
   apply:
     guidance:
       - Preserve the centered 9:16 game frame.
       - Verify affected behavior on desktop and portrait mobile viewports.
+      - Preserve frame-relative sizing and positioning for all game-frame content unless the approved specification explicitly defines another composition.
+      - Verify affected composition in a large desktop and narrow portrait viewport without incidental reflow or overlap.

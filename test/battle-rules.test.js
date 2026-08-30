@@ -20,16 +20,20 @@ import {
   createMovementVelocity,
   MELEE_ENABLED,
   canUseRangedAttack,
+  KNOCKBACK_DISTANCE_WORLD,
+  KNOCKBACK_DURATION_SECONDS,
+  createKnockbackDirection,
+  createKnockbackVelocity,
 } from "../src/battle-rules.js";
 import { lineToY } from "../src/battle-rules.js";
 import { SOUND_PATHS } from "../src/audio.js";
 
-test("the game frame fills the viewport vertically", async () => {
+test("the game frame preserves 9:16 within either limiting viewport dimension", async () => {
   const styles = await readFile(new URL("../src/style.css", import.meta.url), "utf8");
 
   assert.match(styles, /\.stage\s*\{[^}]*place-items:\s*center;[^}]*background:/s);
-  assert.match(styles, /\.game-frame\s*\{[^}]*width:\s*auto;[^}]*height:\s*100vh;/s);
-  assert.match(styles, /\.game-frame\s*\{[^}]*max-width:\s*100vw;/s);
+  assert.match(styles, /\.game-frame\s*\{[^}]*width:\s*min\(100vw,\s*56\.25vh\);[^}]*height:\s*auto;/s);
+  assert.match(styles, /\.game-frame\s*\{[^}]*aspect-ratio:\s*9\s*\/\s*16;/s);
   assert.match(styles, /\.game-frame\s*\{[^}]*border:\s*0;/s);
   assert.doesNotMatch(styles, /\.stage\s*\{[^}]*padding:/s);
 });
@@ -41,7 +45,7 @@ test("game art uses the game frame as its scaling container", async () => {
   assert.match(styles, /\.hero-card\s*\{[^}]*cqw/s);
   assert.match(styles, /flex:\s*0\s+0\s+25cqw/);
   assert.match(styles, /\.hero-cards\s*\{[^}]*width:\s*min\(85cqw,\s*100%\);[^}]*margin-inline:\s*auto;/s);
-  assert.match(styles, /height:\s*calc\(42cqw\s*-\s*30px\)/);
+  assert.match(styles, /height:\s*34\.5cqw/);
   assert.match(styles, /\.hero-shadow, \.hero-sprite/);
   assert.match(styles, /\.unit\s*\{\s*display:\s*none;/s);
   assert.doesNotMatch(styles, /@keyframes walk-up|@keyframes walk-down/);
@@ -55,7 +59,7 @@ test("hero movement keeps the sprite and shadow on one root", async () => {
   assert.match(heroSource, /this\.sprite\.parent\s*=\s*this\.root/);
   assert.match(heroSource, /new PhysicsAggregate\(/);
   assert.match(heroSource, /inertia:\s*Vector3\.Zero\(\)/);
-  assert.match(heroSource, /setLinearVelocity\(\s*new Vector3\(linearVelocity\.x, linearVelocity\.y, 0\)/s);
+  assert.match(heroSource, /setLinearVelocity\(\s*new Vector3\(constrained\.velocity\.x, constrained\.velocity\.y, 0\)/s);
   assert.match(heroSource, /setAngularVelocity\(Vector3\.Zero\(\)\)/);
   assert.match(heroSource, /setAngularDamping\(HERO_ANGULAR_DAMPING\)/);
   assert.match(gameplaySource, /createMovementVelocity\(unit, target, unit\.speed\)/);
@@ -72,15 +76,15 @@ test("battle heroes receive a side-colored glow behind their sprite", async () =
   assert.match(heroSource, /side === "enemy"/);
   assert.match(heroSource, /new Color3\(0\.05, 0\.3, 1\)/);
   assert.match(heroSource, /if \(alpha > 0\.1 \|\| neighborAlpha <= 0\.1\) discard/);
-  assert.match(gameplaySource, /hero\.id, side\)/);
+  assert.match(gameplaySource, /hero\.id, side,\s*this\.pauseController\)/);
 });
 
 test("heroes preserve planar physics while using the shared depth-sort hook", async () => {
   const heroSource = await readFile(new URL("../src/hero.js", import.meta.url), "utf8");
   const gameplaySource = await readFile(new URL("../src/gameplay.js", import.meta.url), "utf8");
 
-  assert.match(heroSource, /this\.physicsPlaneZ\s*=\s*depthForY\(HERO_Z, position\.y\)/);
-  assert.match(heroSource, /this\.root\.position\.z\s*=\s*depthForY\(HERO_Z, this\.root\.position\.y\)/);
+  assert.match(heroSource, /this\.physicsPlaneZ\s*=\s*heroDepthForPivotY\(/);
+  assert.match(heroSource, /this\.root\.position\.z\s*=\s*heroDepthForPivotY\(pivotY\)/);
   assert.match(gameplaySource, /scene\.onBeforeRenderObservable\.add\(\(\)\s*=>/);
   assert.match(gameplaySource, /unit\.hero\.updateDepthSort\(\)/);
 });
@@ -135,7 +139,7 @@ test("depth layers keep ground behind shadows and Y-sorted actors", async () => 
   assert.match(depthSource, /SHADOW_Z = 0\.8/);
   assert.match(depthSource, /HERO_Z = 0\.4/);
   assert.match(depthSource, /PROJECTILE_Z = 0\.2/);
-  assert.match(heroSource, /depthForY\(HERO_Z, this\.root\.position\.y\)/);
+  assert.match(heroSource, /heroDepthForPivotY\(pivotY\)/);
   assert.match(projectileSource, /depthForY\(PROJECTILE_Z, this\.root\.position\.y\)/);
   assert.match(projectileSource, /this\.shadow\.position\.z = SHADOW_Z - PROJECTILE_Z/);
 });
@@ -204,11 +208,11 @@ test("all heroes use melee and bishops additionally use ranged attacks", () => {
   assert.equal(HERO_CLASSES.bishop.damage > HERO_CLASSES.rook.damage, true);
 });
 
-test("hero cards show name, icon stats, and XP on three lines", async () => {
+test("hero cards show name, emoji stats, and XP on three lines", async () => {
   const gameplaySource = await readFile(new URL("../src/gameplay.js", import.meta.url), "utf8");
   const styles = await readFile(new URL("../src/style.css", import.meta.url), "utf8");
 
-  assert.match(gameplaySource, /statLine\.textContent\s*=\s*`H=❤️\$\{stats\.health\},S=⚡\$\{stats\.speed\},D=⚔️\$\{stats\.damage\}`/);
+  assert.match(gameplaySource, /statLine\.textContent\s*=\s*`❤️:\$\{stats\.health\} ⚡:\$\{stats\.speed\} ⚔️:\$\{stats\.damage\}`/);
   assert.match(gameplaySource, /xpLine\.textContent\s*=\s*"XP:000"/);
   assert.match(styles, /\.hero-card\s*\{[^}]*flex:\s*0\s+0\s+25cqw;/s);
   assert.match(styles, /\.hero-card\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/s);
@@ -230,11 +234,37 @@ test("collision resolution identifies a defeated hero", () => {
   );
 });
 
+test("knockback uses a shared walk-scale ease-out profile", () => {
+  assert.equal(KNOCKBACK_DISTANCE_WORLD, 0.25);
+  assert.equal(KNOCKBACK_DURATION_SECONDS, 0.16);
+  assert.deepEqual(createKnockbackDirection({ x: 0, y: 0 }, { x: 3, y: 4 }), { x: 0.6, y: 0.8 });
+  const start = createKnockbackVelocity({ x: 1, y: 0 }, 0);
+  const midpoint = createKnockbackVelocity({ x: 1, y: 0 }, 0.5);
+  const end = createKnockbackVelocity({ x: 1, y: 0 }, 1);
+  assert.ok(start.x > midpoint.x && midpoint.x > end.x);
+  assert.equal(end.x, 0);
+  assert.equal(start.x * KNOCKBACK_DURATION_SECONDS / 2, KNOCKBACK_DISTANCE_WORLD);
+});
+
+test("knockback direction uses a finite deterministic fallback", () => {
+  assert.deepEqual(
+    createKnockbackDirection({ x: 1, y: 1 }, { x: 1, y: 1 }, { x: 0, y: -1 }),
+    { x: 0, y: -1 },
+  );
+  assert.deepEqual(createKnockbackDirection({ x: 1, y: 1 }, { x: 1, y: 1 }), { x: 0, y: 0 });
+});
+
 test("gameplay removes heroes when collision damage reaches zero", async () => {
   const gameplaySource = await readFile(new URL("../src/gameplay.js", import.meta.url), "utf8");
 
-  assert.match(gameplaySource, /if \(player\.hero\.health <= 0\) this\.removeUnit\(player\)/);
-  assert.match(gameplaySource, /if \(enemy\.hero\.health <= 0\) this\.removeUnit\(enemy\)/);
+  assert.match(
+    gameplaySource,
+    /if \(player\.hero\.health <= 0\) this\.removeUnit\(player, enemy\.hero\.damage\)/,
+  );
+  assert.match(
+    gameplaySource,
+    /if \(enemy\.hero\.health <= 0\) this\.removeUnit\(enemy, player\.hero\.damage\)/,
+  );
   assert.match(gameplaySource, /event\.collidedAgainst\?\.metadata\?\.unit/);
 });
 
@@ -250,6 +280,21 @@ test("continuous contact damage uses a 0.2 second cooldown", async () => {
   assert.match(heroSource, /canTakeDamage\(\)/);
   assert.match(heroSource, /this\.damageCooldownRemaining\s*=\s*0\.2/);
   assert.match(projectileSource, /this\.target\.hero\.canTakeDamage\(\)/);
+});
+
+test("damage paths apply directional knockback without dropping target memory", async () => {
+  const gameplaySource = await readFile(new URL("../src/gameplay.js", import.meta.url), "utf8");
+  const projectileSource = await readFile(new URL("../src/projectile.js", import.meta.url), "utf8");
+
+  assert.match(gameplaySource, /knockbackDirection/);
+  assert.match(gameplaySource, /knockbackRemainingSeconds/);
+  assert.match(gameplaySource, /if \(unit\.knockbackRemainingSeconds > 0\)/);
+  assert.match(gameplaySource, /this\.applyKnockback\(\s*player/);
+  assert.match(gameplaySource, /this\.applyKnockback\(\s*enemy/);
+  assert.match(gameplaySource, /createKnockbackDirection\(enemyPosition, playerPosition/);
+  assert.match(gameplaySource, /createKnockbackDirection\(playerPosition, enemyPosition/);
+  assert.match(projectileSource, /previousGroundPosition/);
+  assert.match(projectileSource, /this\.onHit\(this\.target, this\.attacker, impactDirection\)/);
 });
 
 test("projectiles have a ground collider, lifted body art, and attached shadow", async () => {

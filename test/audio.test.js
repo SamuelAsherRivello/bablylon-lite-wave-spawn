@@ -62,3 +62,16 @@ test("round start sound plays at half volume", () => {
   assert.equal(FakeAudio.instances[0].volume, 0.25);
   assert.equal(FakeAudio.instances[0].playbackRate, 1);
 });
+
+test("new sounds use the creation-time SFX multiplier without changing earlier instances", () => {
+  FakeAudio.instances = [];
+  let sfxVolume = 50;
+  const playSound = createSoundPlayer(FakeAudio, () => sfxVolume);
+  playSound("levelStart");
+  const first = FakeAudio.instances[0];
+  assert.equal(first.volume, 0.125);
+  sfxVolume = 0;
+  playSound("click");
+  assert.equal(first.volume, 0.125);
+  assert.equal(FakeAudio.instances[1].volume, 0);
+});
