@@ -9,6 +9,8 @@ https://samuelasherrivello.github.io/babylon-light-never-pawns-game/latest/
 
 The demo is published by GitHub Actions when a GitHub Release is published.
 
+![Light Never Pawns portrait game screenshot](output/playwright/light-never-pawns-portrait.png)
+
 ## Table of Contents
 
 1. Getting Started
