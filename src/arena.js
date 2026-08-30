@@ -6,9 +6,10 @@ import {
   TransformNode,
 } from "@babylonjs/core";
 import { GROUND_Z } from "./depth.js";
+const ASSET_BASE = import.meta.env.BASE_URL;
 
 export class Arena {
-  constructor(scene, backgroundPath = "/field-background.png") {
+  constructor(scene, backgroundPath = `${ASSET_BASE}field-background.png`) {
     this.scene = scene;
     this.root = new TransformNode("arena", scene);
 

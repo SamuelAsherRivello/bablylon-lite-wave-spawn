@@ -1,7 +1,8 @@
+const ASSET_BASE = import.meta.env.BASE_URL;
 const HEROES = [
-  { id: "bishop", name: "Light Bishop", image: "/art/heroes/light-bishop-v1.png" },
-  { id: "pawn", name: "Light Pawn", image: "/art/heroes/light-pawn-v2.png" },
-  { id: "rook", name: "Light Rook", image: "/art/heroes/light-rook-v2.png" },
+  { id: "bishop", name: "Light Bishop", image: `${ASSET_BASE}art/heroes/light-bishop-v1.png` },
+  { id: "pawn", name: "Light Pawn", image: `${ASSET_BASE}art/heroes/light-pawn-v2.png` },
+  { id: "rook", name: "Light Rook", image: `${ASSET_BASE}art/heroes/light-rook-v2.png` },
 ];
 import { MOVEMENT_DURATION_MS, createWalkOffsets } from "./battle-rules.js";
 
@@ -120,7 +121,7 @@ export class BattleGame {
 
     const shadow = document.createElement("img");
     shadow.className = "hero-shadow";
-    shadow.src = "/art/shadow-oval.png";
+    shadow.src = `${ASSET_BASE}art/shadow-oval.png`;
     shadow.alt = "";
     shadow.setAttribute("aria-hidden", "true");
 

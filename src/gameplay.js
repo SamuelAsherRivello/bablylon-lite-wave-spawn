@@ -16,13 +16,14 @@ import { Hero } from "./hero.js";
 import { HERO_ANIMATION_STATES } from "./hero-animation.js";
 import { Vector3 } from "@babylonjs/core";
 import { BishopProjectile } from "./projectile.js";
+const ASSET_BASE = import.meta.env.BASE_URL;
 
 const HEROES = [
-  { id: "bishop", name: "Light Bishop", image: "/art/heroes/light-bishop-v1.png" },
-  { id: "pawn", name: "Light Pawn", image: "/art/heroes/light-pawn-v2.png" },
-  { id: "rook", name: "Light Rook", image: "/art/heroes/light-rook-v2.png" },
+  { id: "bishop", name: "Light Bishop", image: `${ASSET_BASE}art/heroes/light-bishop-v1.png` },
+  { id: "pawn", name: "Light Pawn", image: `${ASSET_BASE}art/heroes/light-pawn-v2.png` },
+  { id: "rook", name: "Light Rook", image: `${ASSET_BASE}art/heroes/light-rook-v2.png` },
 ];
-const SHADOW_IMAGE = "/art/shadow-oval.png";
+const SHADOW_IMAGE = `${ASSET_BASE}art/shadow-oval.png`;
 
 const PLAYER_LINES = { 4: 1, 5: 3, 6: 5 };
 const ENEMY_LINES = { 1: 5, 2: 3, 3: 1 };

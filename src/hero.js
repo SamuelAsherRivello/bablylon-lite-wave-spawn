@@ -18,6 +18,7 @@ import {
 } from "./hero-animation.js";
 import { DamageCloudEffect } from "./particle-effects.js";
 import { depthForY, HERO_Z, SHADOW_Z } from "./depth.js";
+const ASSET_BASE = import.meta.env.BASE_URL;
 
 export class Hero {
   constructor(
@@ -43,7 +44,7 @@ export class Hero {
     this.root = new TransformNode(`${name}-root`, scene);
     this.physicsPlaneZ = depthForY(HERO_Z, position.y);
 
-    this.shadowTexture = new Texture("/art/shadow-oval.png", scene);
+    this.shadowTexture = new Texture(`${ASSET_BASE}art/shadow-oval.png`, scene);
     this.shadowTexture.updateSamplingMode(Texture.TRILINEAR_SAMPLINGMODE);
     this.shadowTexture.hasAlpha = true;
 

@@ -1,8 +1,9 @@
+const ASSET_BASE = import.meta.env.BASE_URL;
 export const SOUND_PATHS = Object.freeze({
-  collision: "/audio/sfx/collision.wav",
-  click: "/audio/sfx/click.wav",
-  levelStart: "/audio/sfx/levelstart.wav",
-  projectileLaunch: "/audio/sfx/projectile-launch.mp3",
+  collision: `${ASSET_BASE}audio/sfx/collision.wav`,
+  click: `${ASSET_BASE}audio/sfx/click.wav`,
+  levelStart: `${ASSET_BASE}audio/sfx/levelstart.wav`,
+  projectileLaunch: `${ASSET_BASE}audio/sfx/projectile-launch.mp3`,
 });
 
 export const SOUND_SETTINGS = Object.freeze({

@@ -6,9 +6,10 @@ import {
   TransformNode,
   Vector3,
 } from "@babylonjs/core";
+const ASSET_BASE = import.meta.env.BASE_URL;
 
 export const DAMAGE_CLOUD_CONFIG = {
-  texturePath: "/art/cloud-puff.png",
+  texturePath: `${ASSET_BASE}art/cloud-puff.png`,
   count: 5,
   minimumSize: 0.055,
   maximumSize: 0.09,
