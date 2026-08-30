@@ -1,4 +1,4 @@
-const ASSET_BASE = import.meta.env.BASE_URL;
+const ASSET_BASE = import.meta.env?.BASE_URL ?? "/";
 export const SOUND_PATHS = Object.freeze({
   collision: `${ASSET_BASE}audio/sfx/collision.wav`,
   click: `${ASSET_BASE}audio/sfx/click.wav`,

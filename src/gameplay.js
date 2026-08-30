@@ -16,7 +16,7 @@ import { Hero } from "./hero.js";
 import { HERO_ANIMATION_STATES } from "./hero-animation.js";
 import { Vector3 } from "@babylonjs/core";
 import { BishopProjectile } from "./projectile.js";
-const ASSET_BASE = import.meta.env.BASE_URL;
+const ASSET_BASE = import.meta.env?.BASE_URL ?? "/";
 
 const HEROES = [
   { id: "bishop", name: "Light Bishop", image: `${ASSET_BASE}art/heroes/light-bishop-v1.png` },

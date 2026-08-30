@@ -1,4 +1,4 @@
-const ASSET_BASE = import.meta.env.BASE_URL;
+const ASSET_BASE = import.meta.env?.BASE_URL ?? "/";
 const HEROES = [
   { id: "bishop", name: "Light Bishop", image: `${ASSET_BASE}art/heroes/light-bishop-v1.png` },
   { id: "pawn", name: "Light Pawn", image: `${ASSET_BASE}art/heroes/light-pawn-v2.png` },

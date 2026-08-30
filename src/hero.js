@@ -18,7 +18,7 @@ import {
 } from "./hero-animation.js";
 import { DamageCloudEffect } from "./particle-effects.js";
 import { depthForY, HERO_Z, SHADOW_Z } from "./depth.js";
-const ASSET_BASE = import.meta.env.BASE_URL;
+const ASSET_BASE = import.meta.env?.BASE_URL ?? "/";
 
 export class Hero {
   constructor(
