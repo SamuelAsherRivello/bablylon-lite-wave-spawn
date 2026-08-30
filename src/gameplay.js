@@ -3,10 +3,18 @@ import {
   resolveCollision,
   HERO_RENDER_DELAY_MS,
   MOVEMENT_DURATION_MS,
+  lineToY,
+  HERO_CLASSES,
+  selectTarget,
+  createMovementVelocity,
+  VERTICAL_SPEED_FACTOR,
+  canUseRangedAttack,
 } from "./battle-rules.js";
 import { createSoundPlayer } from "./audio.js";
 import { Hero } from "./hero.js";
+import { HERO_ANIMATION_STATES } from "./hero-animation.js";
 import { Vector3 } from "@babylonjs/core";
+import { BishopProjectile } from "./projectile.js";
 
 const HEROES = [
   { id: "bishop", name: "Light Bishop", image: "/art/heroes/light-bishop-v1.png" },
@@ -17,6 +25,7 @@ const SHADOW_IMAGE = "/art/shadow-oval.png";
 
 const PLAYER_LINES = { 4: 1, 5: 3, 6: 5 };
 const ENEMY_LINES = { 1: 5, 2: 3, 3: 1 };
+export const CONTACT_DAMAGE_COOLDOWN_SECONDS = 0.2;
 
 export class Gameplay {
   constructor(scene, root) {
@@ -27,8 +36,24 @@ export class Gameplay {
     this.enemySelected = [];
     this.playerUnits = [];
     this.enemyUnits = [];
+    this.dyingUnits = new Set();
+    this.pendingBattleResult = null;
     this.formationPromises = [];
-    this.contacts = new Set();
+    this.contactCooldowns = new Map();
+    this.projectiles = new Set();
+    this.scene.onBeforeRenderObservable.add(() => {
+      for (const [contactId, remaining] of this.contactCooldowns) {
+        const nextRemaining = remaining - this.scene.getEngine().getDeltaTime() / 1000;
+        if (nextRemaining <= 0) this.contactCooldowns.delete(contactId);
+        else this.contactCooldowns.set(contactId, nextRemaining);
+      }
+      [...this.playerUnits, ...this.enemyUnits].forEach((unit) => {
+        if (!unit.removed) {
+          unit.hero.updateDepthSort();
+          this.syncUnitAnimation(unit);
+        }
+      });
+    });
     this.showChoices();
   }
 
@@ -42,7 +67,11 @@ export class Gameplay {
     layer.className = "selection-layer";
     const heading = document.createElement("p");
     heading.className = "phase-label";
-    heading.textContent = step === 0 ? "Choose your first hero" : "Choose your next hero";
+    heading.textContent = [
+      "Choose your backline",
+      "Choose your next line",
+      "Choose your front line",
+    ][step];
     layer.append(heading);
 
     const cards = document.createElement("div");
@@ -59,6 +88,21 @@ export class Gameplay {
     card.setAttribute("aria-label", `Choose ${hero.name}`);
 
     card.append(this.createHero(hero, hero.name, "card-hero"));
+    const title = document.createElement("span");
+    title.className = "hero-card-title";
+    const stats = HERO_CLASSES[hero.id];
+    const className = hero.id[0].toUpperCase() + hero.id.slice(1);
+    const name = document.createElement("span");
+    name.className = "hero-card-name";
+    name.textContent = className;
+    const statLine = document.createElement("span");
+    statLine.className = "hero-card-stats";
+    statLine.textContent = `H=❤️${stats.health},S=⚡${stats.speed},D=⚔️${stats.damage}`;
+    const xpLine = document.createElement("span");
+    xpLine.className = "hero-card-xp";
+    xpLine.textContent = "XP:000";
+    title.append(name, statLine, xpLine);
+    card.append(title);
     card.addEventListener("click", () => {
       this.playSound("click");
       this.chooseHero(hero);
@@ -105,11 +149,19 @@ export class Gameplay {
   createUnit(side, hero, line, index, count) {
     const slot = index - (count - 1) / 2;
     const mesh = new Hero(`${side}-${hero.id}-${line}-${index}`, hero.image,
-      new Vector3(slot * 0.58, this.lineToY(line), 0.2), this.scene);
-    return { side, hero: mesh, speed: 0 };
+      new Vector3(slot * 0.58, lineToY(line), 0.2), this.scene, hero.id, side);
+    const unit = { side, hero: mesh, speed: 0 };
+    mesh.root.metadata = { unit };
+    mesh.physics.body.getCollisionObservable().add((event) => {
+      const otherUnit =
+        event.collidedAgainst?.transformNode?.metadata?.unit ??
+        event.collidedAgainst?.metadata?.unit;
+      if (otherUnit && otherUnit.side !== side) {
+        this.resolveUnitCollision(unit, otherUnit);
+      }
+    });
+    return unit;
   }
-
-  lineToY(line) { return 6.8 - (line - 1) * 2.3; }
 
   createHero(hero, alt, className) {
     const wrapper = document.createElement("span");
@@ -145,50 +197,106 @@ export class Gameplay {
   }
 
   startFrameMovement() {
-    const speed = (this.lineToY(1) - this.lineToY(6)) /
-      (MOVEMENT_DURATION_MS / 1000);
-    [...this.playerUnits, ...this.enemyUnits].forEach((unit) => {
-      unit.speed = unit.side === "player" ? speed : -speed;
+    const updateMovement = (deltaSeconds = 1 / 60) => [...this.playerUnits, ...this.enemyUnits].forEach((unit) => {
+      if (unit.removed) return;
+      const opponents = unit.side === "player" ? this.enemyUnits : this.playerUnits;
+      if (!unit.target || unit.target.removed || !opponents.includes(unit.target)) {
+        unit.target = selectTarget(unit, opponents);
+      }
+      const target = unit.target;
+      if (!target) {
+        unit.hero.physics?.body?.setLinearVelocity(Vector3.Zero());
+        return;
+      }
+      unit.speed = unit.hero.speed * (VERTICAL_SPEED_FACTOR);
+      const velocity = createMovementVelocity(unit, target, unit.speed);
+      unit.hero.physics.body.setLinearVelocity(new Vector3(velocity.x, velocity.y, 0));
+      this.tryRangedAttack(unit, target, deltaSeconds);
     });
+    updateMovement();
     this.scene.onBeforeRenderObservable.add(() => {
-      const units = [...this.playerUnits, ...this.enemyUnits];
-      units.forEach((unit) => {
-        unit.hero.physics.body.setLinearVelocity(
-          new Vector3(0, unit.speed, 0),
-        );
-      });
+      updateMovement(this.scene.getEngine().getDeltaTime() / 1000);
     });
   }
 
-  resolveCollisions() {
-    for (const player of this.playerUnits) {
-      for (const enemy of this.enemyUnits) {
-        const contactId = `${player.hero.name}:${enemy.hero.name}`;
-        const verticalDistance = Math.abs(player.hero.root.position.y - enemy.hero.root.position.y);
-        const horizontalDistance = Math.abs(player.hero.root.position.x - enemy.hero.root.position.x);
-        if (verticalDistance > 0.42 || horizontalDistance > 0.58 || this.contacts.has(contactId)) continue;
-        this.contacts.add(contactId);
-        const result = resolveCollision(player.hero, enemy.hero);
-        player.hero.health = result.attackerHealth;
-        enemy.hero.health = result.defenderHealth;
-        if (player.hero.health === 0) this.removeUnit(player);
-        if (enemy.hero.health === 0) this.removeUnit(enemy);
-        if (!this.playerUnits.length || !this.enemyUnits.length) {
-          this.endBattle(this.playerUnits.length ? "Player wins" : "Enemy wins");
-          return;
-        }
-      }
+  tryRangedAttack(unit, target, deltaSeconds) {
+    if (!unit.hero.profile.attacks.includes("ranged")) return;
+    unit.rangedCooldown = Math.max(0, (unit.rangedCooldown ?? 0) - deltaSeconds);
+    if (unit.rangedCooldown > 0 || !canUseRangedAttack(unit, target)) return;
+    unit.rangedCooldown = unit.hero.profile.rangedCooldown;
+    const projectile = new BishopProjectile(this.scene, unit, target, (defender, attacker) => {
+      if (defender.removed) return;
+      defender.hero.health = Math.max(0, defender.hero.health - attacker.hero.damage);
+      if (defender.hero.health <= 0) this.removeUnit(defender);
+    });
+    this.projectiles.add(projectile);
+    const originalDispose = projectile.dispose.bind(projectile);
+    projectile.dispose = () => {
+      originalDispose();
+      this.projectiles.delete(projectile);
+    };
+  }
+
+  syncUnitAnimation(unit) {
+    const linearVelocity = unit.hero.physics?.body?.getLinearVelocity();
+    if (!linearVelocity) return;
+    const isMoving = Math.hypot(linearVelocity.x, linearVelocity.y) > 0.01;
+    unit.hero.playAnimation(
+      isMoving ? HERO_ANIMATION_STATES.WALKING : HERO_ANIMATION_STATES.IDLE,
+    );
+  }
+
+  resolveUnitCollision(player, enemy) {
+    if (player.removed || enemy.removed) return;
+    const contactId = `${player.hero.name}:${enemy.hero.name}`;
+    if (this.contactCooldowns.has(contactId)) return;
+    if (!player.hero.canTakeDamage() || !enemy.hero.canTakeDamage()) return;
+    this.contactCooldowns.set(contactId, CONTACT_DAMAGE_COOLDOWN_SECONDS);
+    const result = resolveCollision(player.hero, enemy.hero);
+    player.hero.health = result.attackerHealth;
+    enemy.hero.health = result.defenderHealth;
+    if (player.hero.health <= 0) this.removeUnit(player);
+    else {
+      player.hero.playAnimation(HERO_ANIMATION_STATES.TAKE_DAMAGE);
+      player.hero.playDamageEffect();
+    }
+    if (enemy.hero.health <= 0) this.removeUnit(enemy);
+    else {
+      enemy.hero.playAnimation(HERO_ANIMATION_STATES.TAKE_DAMAGE);
+      enemy.hero.playDamageEffect();
+    }
+    if (!this.playerUnits.length || !this.enemyUnits.length) {
+      this.endBattle(this.playerUnits.length ? "Player wins" : "Enemy wins");
     }
   }
 
   removeUnit(unit) {
+    if (unit.removed) return;
+    unit.removed = true;
+    [...this.playerUnits, ...this.enemyUnits].forEach((otherUnit) => {
+      if (otherUnit.target === unit) otherUnit.target = null;
+    });
     const units = unit.side === "player" ? this.playerUnits : this.enemyUnits;
     const index = units.indexOf(unit);
     if (index !== -1) units.splice(index, 1);
-    unit.hero.dispose();
+    this.dyingUnits.add(unit);
+    unit.hero.disablePhysics();
+    unit.hero.playAnimation(HERO_ANIMATION_STATES.DEAD, () => {
+      this.dyingUnits.delete(unit);
+      unit.hero.dispose();
+      if (this.pendingBattleResult && this.dyingUnits.size === 0) {
+        this.finalizeBattle(this.pendingBattleResult);
+      }
+    });
   }
 
   endBattle(message) {
+    this.pendingBattleResult = message;
+    if (this.dyingUnits.size > 0) return;
+    this.finalizeBattle(message);
+  }
+
+  finalizeBattle(message) {
     this.scene.getEngine().stopRenderLoop();
     this.root.className = "game-ui battle-over";
     const result = document.createElement("p");

@@ -6,6 +6,7 @@ import {
   Vector3,
 } from "@babylonjs/core";
 import HavokPhysics from "@babylonjs/havok";
+import havokWasmUrl from "@babylonjs/havok/lib/esm/HavokPhysics.wasm?url";
 import { HavokPlugin } from "@babylonjs/core/Physics/v2/Plugins/havokPlugin";
 import { Arena } from "./arena.js";
 import { Gameplay } from "./gameplay.js";
@@ -19,8 +20,9 @@ const engine = new Engine(
   true,
 );
 const scene = new Scene(engine);
-const havok = await HavokPhysics();
+const havok = await HavokPhysics({ locateFile: () => havokWasmUrl });
 scene.enablePhysics(null, new HavokPlugin(true, havok));
+scene.getPhysicsEngine().setGravity(new Vector3(0, 0, 0));
 scene.clearColor = new Color4(0.035, 0.047, 0.075, 1);
 
 const camera = new FreeCamera("locked-camera", new Vector3(0, 0, 10), scene);

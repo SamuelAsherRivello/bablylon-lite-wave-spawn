@@ -11,8 +11,16 @@ import {
   createWalkOffsets,
   HERO_HEALTH,
   HERO_DAMAGE,
+  HERO_CLASSES,
+  HERO_ANGULAR_DAMPING,
   resolveCollision,
+  findClosestOpponent,
+  selectTarget,
+  createMovementVelocity,
+  MELEE_ENABLED,
+  canUseRangedAttack,
 } from "../src/battle-rules.js";
+import { lineToY } from "../src/battle-rules.js";
 import { SOUND_PATHS } from "../src/audio.js";
 
 test("the game frame fills the viewport vertically", async () => {
@@ -21,6 +29,7 @@ test("the game frame fills the viewport vertically", async () => {
   assert.match(styles, /\.stage\s*\{[^}]*place-items:\s*center;[^}]*background:/s);
   assert.match(styles, /\.game-frame\s*\{[^}]*width:\s*auto;[^}]*height:\s*100vh;/s);
   assert.match(styles, /\.game-frame\s*\{[^}]*max-width:\s*100vw;/s);
+  assert.match(styles, /\.game-frame\s*\{[^}]*border:\s*0;/s);
   assert.doesNotMatch(styles, /\.stage\s*\{[^}]*padding:/s);
 });
 
@@ -30,16 +39,62 @@ test("game art uses the game frame as its scaling container", async () => {
   assert.match(styles, /container-type:\s*size/);
   assert.match(styles, /\.hero-card\s*\{[^}]*cqw/s);
   assert.match(styles, /flex:\s*0\s+0\s+25cqw/);
-  assert.match(styles, /height:\s*42cqw/);
+  assert.match(styles, /\.hero-cards\s*\{[^}]*width:\s*min\(85cqw,\s*100%\);[^}]*margin-inline:\s*auto;/s);
+  assert.match(styles, /height:\s*calc\(42cqw\s*-\s*30px\)/);
   assert.match(styles, /\.hero-shadow, \.hero-sprite/);
   assert.match(styles, /\.unit\s*\{\s*display:\s*none;/s);
   assert.doesNotMatch(styles, /@keyframes walk-up|@keyframes walk-down/);
+});
+
+test("hero movement keeps the sprite and shadow on one root", async () => {
+  const heroSource = await readFile(new URL("../src/hero.js", import.meta.url), "utf8");
+  const gameplaySource = await readFile(new URL("../src/gameplay.js", import.meta.url), "utf8");
+
+  assert.match(heroSource, /this\.shadow\.parent\s*=\s*this\.root/);
+  assert.match(heroSource, /this\.sprite\.parent\s*=\s*this\.root/);
+  assert.match(heroSource, /new PhysicsAggregate\(/);
+  assert.match(heroSource, /inertia:\s*new Vector3\(0, 0, 1\)/);
+  assert.match(heroSource, /setLinearVelocity\(\s*new Vector3\(linearVelocity\.x, linearVelocity\.y, 0\)/s);
+  assert.match(heroSource, /setAngularVelocity\(\s*new Vector3\(0, 0, angularVelocity\.z\)/s);
+  assert.match(heroSource, /setAngularDamping\(HERO_ANGULAR_DAMPING\)/);
+  assert.match(gameplaySource, /createMovementVelocity\(unit, target, unit\.speed\)/);
+  assert.match(gameplaySource, /setLinearVelocity\(new Vector3\(velocity\.x, velocity\.y, 0\)\)/);
+});
+
+test("battle heroes receive a side-colored glow behind their sprite", async () => {
+  const heroSource = await readFile(new URL("../src/hero.js", import.meta.url), "utf8");
+  const gameplaySource = await readFile(new URL("../src/gameplay.js", import.meta.url), "utf8");
+
+  assert.match(heroSource, /ShaderMaterial\(`\$\{name\}-glow-material`/);
+  assert.match(heroSource, /neighborAlpha/);
+  assert.match(heroSource, /setVector2\("texelSize"/);
+  assert.match(heroSource, /side === "enemy"/);
+  assert.match(heroSource, /new Color3\(0\.05, 0\.3, 1\)/);
+  assert.match(heroSource, /if \(alpha > 0\.1 \|\| neighborAlpha <= 0\.1\) discard/);
+  assert.match(gameplaySource, /hero\.id, side\)/);
+});
+
+test("heroes keep a fixed depth while preserving the shared depth-sort hook", async () => {
+  const heroSource = await readFile(new URL("../src/hero.js", import.meta.url), "utf8");
+  const gameplaySource = await readFile(new URL("../src/gameplay.js", import.meta.url), "utf8");
+
+  assert.match(heroSource, /this\.physicsPlaneZ\s*=\s*position\.z/);
+  assert.match(heroSource, /this\.root\.position\.z\s*=\s*this\.physicsPlaneZ/);
+  assert.match(gameplaySource, /scene\.onBeforeRenderObservable\.add\(\(\)\s*=>/);
+  assert.match(gameplaySource, /unit\.hero\.updateDepthSort\(\)/);
 });
 
 test("gameplay sound effects use the public audio files", () => {
   assert.equal(SOUND_PATHS.collision, "/audio/sfx/collision.wav");
   assert.equal(SOUND_PATHS.click, "/audio/sfx/click.wav");
   assert.equal(SOUND_PATHS.levelStart, "/audio/sfx/levelstart.wav");
+});
+
+test("Havok loads its WASM through Vite's asset pipeline", async () => {
+  const source = await readFile(new URL("../src/main.js", import.meta.url), "utf8");
+
+  assert.match(source, /HavokPhysics\.wasm\?url/);
+  assert.match(source, /HavokPhysics\(\{\s*locateFile:\s*\(\)\s*=>\s*havokWasmUrl/s);
 });
 
 test("gameplay creates heroes on all six lines", () => {
@@ -51,8 +106,28 @@ test("gameplay creates heroes on all six lines", () => {
   assert.deepEqual(plan.enemy, ENEMY_LINE_COUNTS);
 });
 
-test("hero formations render left to right with a quarter-second delay", () => {
-  assert.equal(HERO_RENDER_DELAY_MS, 250);
+test("hero lines use the requested mirrored vertical positions", () => {
+  assert.deepEqual(
+    [1, 2, 3, 4, 5, 6].map(lineToY),
+    [6.5, 4.5, 2.2, -2.2, -4.5, -6.5],
+  );
+});
+
+test("formation rendering uses the shared hero line Y mapping", async () => {
+  const gameplaySource = await readFile(new URL("../src/gameplay.js", import.meta.url), "utf8");
+
+  assert.match(gameplaySource, /new Vector3\(slot \* 0\.58, lineToY\(line\), 0\.2\)/);
+  assert.doesNotMatch(gameplaySource, /new Vector3\(slot \* 0\.58, this\.lineToY\(line\), 0\.2\)/);
+});
+
+test("depth sorting does not translate heroes on Z", async () => {
+  const heroSource = await readFile(new URL("../src/hero.js", import.meta.url), "utf8");
+
+  assert.doesNotMatch(heroSource, /0\.5\s*-\s*this\.root\.position\.y\s*\*\s*0\.01/);
+});
+
+test("hero formations render left to right with a 0.05-second delay", () => {
+  assert.equal(HERO_RENDER_DELAY_MS, 50);
 });
 
 test("movement is slow and each hero walks with zero-drift jiggle", () => {
@@ -64,21 +139,112 @@ test("movement is slow and each hero walks with zero-drift jiggle", () => {
   assert.ok(offsets.some((offset) => offset > 0));
 });
 
+test("each unit targets the closest opposing unit", () => {
+  const unit = { hero: { root: { position: { x: 0, y: 0 } } } };
+  const opponents = [
+    { id: "far", hero: { root: { position: { x: 0, y: 5 } } } },
+    { id: "near", hero: { root: { position: { x: 2, y: 0 } } } },
+  ];
+
+  assert.equal(findClosestOpponent(unit, opponents), opponents[1]);
+  assert.deepEqual(createMovementVelocity(unit, opponents[1], 3), { x: 3, y: 0 });
+});
+
+test("target selection prefers untargeted enemies, then distance and health", () => {
+  const unit = { hero: { root: { position: { x: 0, y: 0 } } } };
+  const targeted = { id: "targeted", target: {}, hero: { health: 1, root: { position: { x: 1, y: 0 } } } };
+  const farther = { id: "farther", hero: { health: 100, root: { position: { x: 2, y: 0 } } } };
+  const nearer = { id: "nearer", hero: { health: 50, root: { position: { x: 1, y: 0 } } } };
+
+  assert.equal(selectTarget(unit, [targeted, farther, nearer]), nearer);
+});
+
+test("target selection uses lower health and stable order for equal distance", () => {
+  const unit = { hero: { root: { position: { x: 0, y: 0 } } } };
+  const first = { id: "first", hero: { health: 20, root: { position: { x: 2, y: 0 } } } };
+  const second = { id: "second", hero: { health: 10, root: { position: { x: 2, y: 0 } } } };
+  const dead = { id: "dead", removed: true, hero: { health: 0, root: { position: { x: 0, y: 0 } } } };
+
+  assert.equal(selectTarget(unit, [first, second, dead]), second);
+  assert.equal(selectTarget(unit, [first, { ...second, hero: { ...second.hero, health: 20 } }]), first);
+  assert.equal(selectTarget(unit, []), null);
+});
+
 test("collision damage is enabled during movement", () => {
   assert.equal(COLLISION_ENABLED, true);
 });
 
-test("heroes have 100 health and deal 11 damage on collision", () => {
-  assert.equal(HERO_HEALTH, 100);
-  assert.equal(HERO_DAMAGE, 11);
+test("all heroes use melee and bishops additionally use ranged attacks", () => {
+  assert.equal(MELEE_ENABLED, true);
+  assert.deepEqual(HERO_CLASSES.rook.attacks, ["melee"]);
+  assert.deepEqual(HERO_CLASSES.pawn.attacks, ["melee"]);
+  assert.deepEqual(HERO_CLASSES.bishop.attacks, ["melee", "ranged"]);
+  assert.equal(HERO_CLASSES.bishop.range > 0, true);
+  const bishop = { hero: { profile: HERO_CLASSES.bishop, root: { position: { x: 0, y: 0 } } } };
+  const target = { hero: { root: { position: { x: 2, y: 0 } } } };
+  assert.equal(canUseRangedAttack(bishop, target), true);
+  assert.equal(HERO_ANGULAR_DAMPING, 8);
+  assert.equal(HERO_CLASSES.rook.health > HERO_CLASSES.pawn.health, true);
+  assert.equal(HERO_CLASSES.pawn.speed > HERO_CLASSES.rook.speed, true);
+  assert.equal(HERO_CLASSES.bishop.damage > HERO_CLASSES.rook.damage, true);
+});
 
-  const result = resolveCollision({ health: HERO_HEALTH }, { health: HERO_HEALTH });
-  assert.deepEqual(result, { attackerHealth: 89, defenderHealth: 89 });
+test("hero cards show name, icon stats, and XP on three lines", async () => {
+  const gameplaySource = await readFile(new URL("../src/gameplay.js", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../src/style.css", import.meta.url), "utf8");
+
+  assert.match(gameplaySource, /statLine\.textContent\s*=\s*`H=❤️\$\{stats\.health\},S=⚡\$\{stats\.speed\},D=⚔️\$\{stats\.damage\}`/);
+  assert.match(gameplaySource, /xpLine\.textContent\s*=\s*"XP:000"/);
+  assert.match(styles, /\.hero-card\s*\{[^}]*flex:\s*0\s+0\s+25cqw;/s);
+  assert.match(styles, /\.hero-card\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/s);
+  assert.match(styles, /\.hero-card-stats, \.hero-card-xp\s*\{[^}]*font-family:\s*inherit;[^}]*font-size:\s*1\.45cqw;[^}]*font-weight:\s*inherit;/s);
+});
+
+test("collision uses the attacker and defender class damage", () => {
+  assert.equal(HERO_HEALTH, 120);
+  assert.equal(HERO_DAMAGE, 20);
+
+  const result = resolveCollision({ health: 100, damage: 20 }, { health: 100, damage: 30 });
+  assert.deepEqual(result, { attackerHealth: 70, defenderHealth: 80 });
 });
 
 test("collision resolution identifies a defeated hero", () => {
   assert.deepEqual(
-    resolveCollision({ health: 11 }, { health: 1 }),
+    resolveCollision({ health: 20, damage: 20 }, { health: 1, damage: 30 }),
     { attackerHealth: 0, defenderHealth: 0 },
   );
+});
+
+test("gameplay removes heroes when collision damage reaches zero", async () => {
+  const gameplaySource = await readFile(new URL("../src/gameplay.js", import.meta.url), "utf8");
+
+  assert.match(gameplaySource, /if \(player\.hero\.health <= 0\) this\.removeUnit\(player\)/);
+  assert.match(gameplaySource, /if \(enemy\.hero\.health <= 0\) this\.removeUnit\(enemy\)/);
+  assert.match(gameplaySource, /event\.collidedAgainst\?\.metadata\?\.unit/);
+});
+
+test("continuous contact damage uses a 0.2 second cooldown", async () => {
+  const gameplaySource = await readFile(new URL("../src/gameplay.js", import.meta.url), "utf8");
+
+  assert.match(gameplaySource, /CONTACT_DAMAGE_COOLDOWN_SECONDS\s*=\s*0\.2/);
+  assert.match(gameplaySource, /this\.contactCooldowns\.has\(contactId\)/);
+  assert.match(gameplaySource, /this\.contactCooldowns\.set\(contactId, CONTACT_DAMAGE_COOLDOWN_SECONDS\)/);
+  assert.match(gameplaySource, /this\.contactCooldowns\.delete\(contactId\)/);
+  const heroSource = await readFile(new URL("../src/hero.js", import.meta.url), "utf8");
+  const projectileSource = await readFile(new URL("../src/projectile.js", import.meta.url), "utf8");
+  assert.match(heroSource, /canTakeDamage\(\)/);
+  assert.match(heroSource, /this\.damageCooldownRemaining\s*=\s*0\.2/);
+  assert.match(projectileSource, /this\.target\.hero\.canTakeDamage\(\)/);
+});
+
+test("projectiles have a ground collider, lifted body art, and attached shadow", async () => {
+  const projectileSource = await readFile(new URL("../src/projectile.js", import.meta.url), "utf8");
+
+  assert.match(projectileSource, /this\.root\s*=\s*new TransformNode/);
+  assert.match(projectileSource, /this\.collider\s*=\s*MeshBuilder\.CreateDisc/);
+  assert.match(projectileSource, /this\.mesh\s*=\s*MeshBuilder\.CreateDisc/);
+  assert.match(projectileSource, /this\.shadow\s*=\s*MeshBuilder\.CreateDisc/);
+  assert.match(projectileSource, /const fauxHeight = Math\.sin\(progress \* Math\.PI\)/);
+  assert.match(projectileSource, /this\.mesh\.position\.y = fauxHeight/);
+  assert.match(projectileSource, /this\.shadow\.parent = this\.root/);
 });
