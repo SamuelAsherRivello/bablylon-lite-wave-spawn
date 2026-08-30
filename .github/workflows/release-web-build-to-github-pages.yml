@@ -31,7 +31,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          release_version="${{ github.event.release.tag_name }}"
+          release_version="${{ github.event.release.tag_name || github.ref_name }}"
           version_pattern='^v[0-9]+([.][0-9]+){1,2}(-[0-9A-Za-z.-]+)?$'
           if ! [[ "${release_version}" =~ ${version_pattern} ]]; then
             echo "::error::Release tag must look like v0.1 or v1.2.3."
